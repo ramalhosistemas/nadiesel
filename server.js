@@ -29,12 +29,12 @@ function seedDB(){
   };
 }
 function loadDB(){
-  if(process.env.NETLIFY)return seedDB();
+  if(process.env.NETLIFY||process.env.AWS_LAMBDA_FUNCTION_NAME||process.env.LAMBDA_TASK_ROOT)return seedDB();
   fs.mkdirSync(DATA_DIR,{recursive:true});
   if(!fs.existsSync(DB_FILE)){ const db=seedDB(); saveDB(db); return db; }
   try{const current=JSON.parse(fs.readFileSync(DB_FILE,'utf8'));current.users??=[];current.users.forEach(u=>u.role='admin');current.sessions??={};current.biometricChallenges??={};current.clients??=[];current.stock??=[];current.finance??=[];current.vehicles??=[];current.orders??=[];current.orders.forEach(o=>{if(!o.paymentTerms||o.paymentTerms==='15-30')o.paymentTerms='dia-30';if(o.paymentTerms==='dia-05')o.paymentTerms='dia-15'});current.agenda??=[];current.shares??=[];current.audit??=[];return current;}catch{const db=seedDB();saveDB(db);return db;}
 }
-function saveDB(db){if(process.env.NETLIFY)return;const temp=DB_FILE+'.tmp';fs.writeFileSync(temp,JSON.stringify(db,null,2));fs.renameSync(temp,DB_FILE);}
+function saveDB(db){if(process.env.NETLIFY||process.env.AWS_LAMBDA_FUNCTION_NAME||process.env.LAMBDA_TASK_ROOT)return;const temp=DB_FILE+'.tmp';fs.writeFileSync(temp,JSON.stringify(db,null,2));fs.renameSync(temp,DB_FILE);}
 let db=loadDB();
 
 function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));}

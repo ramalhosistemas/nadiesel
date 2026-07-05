@@ -1,5 +1,7 @@
 'use strict';
 
+process.env.NETLIFY='true';
+
 const {Readable}=require('node:stream');
 const {getStore}=require('@netlify/blobs');
 const {api,seedDB,getDatabase,setDatabase}=require('../../server');
