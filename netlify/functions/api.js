@@ -9,7 +9,7 @@ const {api,seedDB,getDatabase,setDatabase}=require('../../server');
 exports.handler=async event=>{
   connectLambda(event);
   const store=getStore('na-diesel-data');
-  const stored=await store.get('database',{type:'json',consistency:'strong'});
+  const stored=await store.get('database',{type:'json'});
   setDatabase(stored?.data&&stored?.etag?stored.data:(stored||seedDB()));
 
   const req=new Readable({read(){if(event.body)this.push(Buffer.from(event.body,event.isBase64Encoded?'base64':'utf8'));this.push(null);}});
