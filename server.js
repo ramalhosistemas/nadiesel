@@ -15,6 +15,9 @@ const MIME = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8
 const id = p => `${p}_${crypto.randomBytes(7).toString('hex')}`;
 const now = () => new Date().toISOString();
 const passwordHash = password => crypto.scryptSync(String(password), 'gl-electromechanic-v1', 32).toString('hex');
+const AUTH_SECRET=process.env.AUTH_SECRET||'na-diesel-auth-v2-2026';
+const createAuthToken=userId=>{const payload=Buffer.from(JSON.stringify({sub:userId,iat:Date.now(),nonce:crypto.randomBytes(12).toString('hex')})).toString('base64url'),signature=crypto.createHmac('sha256',AUTH_SECRET).update(payload).digest('base64url');return `${payload}.${signature}`};
+const tokenUserId=token=>{try{const [payload,signature]=String(token||'').split('.');if(!payload||!signature)return'';const expected=crypto.createHmac('sha256',AUTH_SECRET).update(payload).digest('base64url');if(signature.length!==expected.length||!crypto.timingSafeEqual(Buffer.from(signature),Buffer.from(expected)))return'';const data=JSON.parse(Buffer.from(payload,'base64url').toString('utf8'));return Date.now()-Number(data.iat)<1000*60*60*24*30?data.sub:''}catch{return''}};
 const b64url = data => Buffer.from(data).toString('base64url');
 const fromB64url = data => Buffer.from(String(data),'base64url');
 const newChallenge = (userId,type) => {const value=b64url(crypto.randomBytes(32));db.biometricChallenges??={};db.biometricChallenges[value]={userId,type,expires:Date.now()+120000};return value;};
@@ -39,7 +42,7 @@ let db=loadDB();
 
 function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));}
 function body(req){return new Promise((resolve,reject)=>{let raw='';req.on('data',c=>{raw+=c;if(raw.length>100_000_000){reject(new Error('Payload muito grande'));req.destroy();}});req.on('end',()=>{try{resolve(raw?JSON.parse(raw):{});}catch{reject(new Error('JSON inválido'));}});req.on('error',reject);});}
-function auth(req){const token=(req.headers.authorization||'').replace(/^Bearer\s+/,'');const userId=db.sessions?.[token];return db.users.find(u=>u.id===userId&&u.active);}
+function auth(req){const token=(req.headers.authorization||'').replace(/^Bearer\s+/,'');const userId=tokenUserId(token)||db.sessions?.[token];return db.users.find(u=>u.id===userId&&u.active);}
 function safeUser(u){return u&&({id:u.id,name:u.name,username:u.username,role:u.role,active:u.active,avatar:u.avatar||''});}
 function audit(user,action,target){db.audit.unshift({id:id('aud'),userId:user.id,user:user.name,action,target,at:now()});db.audit=db.audit.slice(0,500);}
 function canAccess(user,ownerId,resource,mode='view',resourceId=''){
@@ -53,7 +56,7 @@ async function api(req,res){
   if(method==='POST'&&parts[1]==='login'){
     const b=await body(req);const u=db.users.find(x=>x.active&&(x.username.toLowerCase()===String(b.username||'').toLowerCase()||x.name.toLowerCase()===String(b.username||'').toLowerCase()));
     if(!u||u.passwordHash!==passwordHash(b.password||''))return json(res,401,{error:'Usuário ou senha inválidos.'});
-    const token=crypto.randomBytes(28).toString('hex');db.sessions??={};db.sessions[token]=u.id;audit(u,'login','session');saveDB(db);return json(res,200,{token,user:safeUser(u)});
+    const token=createAuthToken(u.id);audit(u,'login','session');saveDB(db);return json(res,200,{token,user:safeUser(u)});
   }
   if(method==='POST'&&parts[1]==='biometric'&&parts[2]==='login-options'){
     const b=await body(req);const u=db.users.find(x=>x.active&&(x.username.toLowerCase()===String(b.username||'').toLowerCase()||x.name.toLowerCase()===String(b.username||'').toLowerCase()));
@@ -62,7 +65,7 @@ async function api(req,res){
   }
   if(method==='POST'&&parts[1]==='biometric'&&parts[2]==='login-complete'){
     const b=await body(req);const u=db.users.find(x=>x.id===b.userId&&x.active),key=u?.passkeys?.find(k=>k.credentialId===b.credentialId);if(!u||!key)return json(res,401,{error:'Credencial biométrica inválida.'});
-    try{const client=JSON.parse(fromB64url(b.clientDataJSON).toString('utf8'));if(client.type!=='webauthn.get'||!consumeChallenge(client.challenge,u.id,'login'))throw new Error('Desafio inválido');const origin=new URL(client.origin),rpId=origin.hostname,allowedLocal=client.origin==='http://127.0.0.1:3015'||client.origin==='http://localhost:3015',allowedWeb=origin.protocol==='https:';if(!allowedLocal&&!allowedWeb)throw new Error('Origem inválida');const authData=fromB64url(b.authenticatorData),expectedRp=crypto.createHash('sha256').update(rpId).digest();if(!authData.subarray(0,32).equals(expectedRp)||(authData[32]&1)!==1)throw new Error('Autenticador inválido');const signed=Buffer.concat([authData,crypto.createHash('sha256').update(fromB64url(b.clientDataJSON)).digest()]);if(!crypto.verify('sha256',signed,crypto.createPublicKey({key:fromB64url(key.publicKey),format:'der',type:'spki'}),fromB64url(b.signature)))throw new Error('Assinatura inválida');const token=crypto.randomBytes(28).toString('hex');db.sessions??={};db.sessions[token]=u.id;audit(u,'login biométrico',key.name||'dispositivo');saveDB(db);return json(res,200,{token,user:safeUser(u)});}catch(e){return json(res,401,{error:'Não foi possível validar a biometria.'});}
+    try{const client=JSON.parse(fromB64url(b.clientDataJSON).toString('utf8'));if(client.type!=='webauthn.get'||!consumeChallenge(client.challenge,u.id,'login'))throw new Error('Desafio inválido');const origin=new URL(client.origin),rpId=origin.hostname,allowedLocal=client.origin==='http://127.0.0.1:3015'||client.origin==='http://localhost:3015',allowedWeb=origin.protocol==='https:';if(!allowedLocal&&!allowedWeb)throw new Error('Origem inválida');const authData=fromB64url(b.authenticatorData),expectedRp=crypto.createHash('sha256').update(rpId).digest();if(!authData.subarray(0,32).equals(expectedRp)||(authData[32]&1)!==1)throw new Error('Autenticador inválido');const signed=Buffer.concat([authData,crypto.createHash('sha256').update(fromB64url(b.clientDataJSON)).digest()]);if(!crypto.verify('sha256',signed,crypto.createPublicKey({key:fromB64url(key.publicKey),format:'der',type:'spki'}),fromB64url(b.signature)))throw new Error('Assinatura inválida');const token=createAuthToken(u.id);audit(u,'login biométrico',key.name||'dispositivo');saveDB(db);return json(res,200,{token,user:safeUser(u)});}catch(e){return json(res,401,{error:'Não foi possível validar a biometria.'});}
   }
   const user=auth(req);if(!user)return json(res,401,{error:'Sessão inválida ou expirada.'});
   if(method==='POST'&&parts[1]==='logout'){for(const [t,uid]of Object.entries(db.sessions||{}))if(uid===user.id)delete db.sessions[t];saveDB(db);return json(res,200,{ok:true});}
@@ -83,7 +86,9 @@ async function api(req,res){
   if(parts[1]==='dashboard'&&method==='GET'){
     const vehicles=db.vehicles.filter(v=>canAccess(user,v.ownerId,'vehicles'));
     const orders=db.orders.filter(o=>canAccess(user,o.ownerId,'orders','view',o.id));
-    return json(res,200,{vehicles,orders,agenda:db.agenda.filter(a=>canAccess(user,a.ownerId,'agenda')),stats:{vehicles:vehicles.length,open:orders.filter(o=>!['Finalizada','Entregue'].includes(o.status)).length,waiting:orders.filter(o=>o.status==='Aguardando peça').length,electrical:orders.filter(o=>o.category==='Elétrica').length,mechanical:orders.filter(o=>o.category==='Mecânica').length,finished:orders.filter(o=>o.status==='Finalizada').length,delivered:orders.filter(o=>o.status==='Entregue').length}});
+    const today=new Date(),todayKey=today.toISOString().slice(0,10),monthKey=today.toISOString().slice(0,7),monthNames=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    const monthlyRevenue=Array.from({length:12},(_,index)=>{const d=new Date(today.getFullYear(),today.getMonth()-11+index,1),key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,value=db.finance.filter(item=>item.type==='Receita'&&item.status!=='pending'&&String(item.date||item.createdAt||'').startsWith(key)).reduce((sum,item)=>sum+Number(item.value||0),0);return{key,label:monthNames[d.getMonth()],value}}),currentRevenue=monthlyRevenue.at(-1)?.value||0,finishedThisMonth=orders.filter(o=>o.status==='Finalizada'&&String(o.closedAt||o.updatedAt||'').startsWith(monthKey)).length;
+    return json(res,200,{vehicles,orders,agenda:db.agenda.filter(a=>canAccess(user,a.ownerId,'agenda')),indicators:{monthlyRevenue,currentRevenue,finishedThisMonth,averageTicket:finishedThisMonth?currentRevenue/finishedThisMonth:0},stats:{vehicles:vehicles.length,open:orders.filter(o=>!['Finalizada','Entregue'].includes(o.status)).length,waiting:orders.filter(o=>o.status==='Aguardando peça').length,electrical:orders.filter(o=>o.category==='Elétrica'&&!['Finalizada','Entregue'].includes(o.status)).length,mechanical:orders.filter(o=>o.category==='Mecânica'&&!['Finalizada','Entregue'].includes(o.status)).length,finished:orders.filter(o=>o.status==='Finalizada'&&String(o.closedAt||o.updatedAt||'').startsWith(todayKey)).length,delivered:orders.filter(o=>o.status==='Entregue'&&String(o.updatedAt||'').startsWith(todayKey)).length}});
   }
 
   if(parts[1]==='vehicles'){
