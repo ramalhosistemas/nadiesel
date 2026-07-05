@@ -5,7 +5,12 @@
   "description": "Sistema de gestão da N.A.Diesel Diagnósticos e Programação",
   "scripts": {
     "start": "node server.js",
-    "check": "node --check server.js && node --check public/app.js"
+    "check": "node --check server.js && node --check public/app.js && node --check netlify/functions/api.js"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@netlify/blobs": "^10.7.9"
+  }
 }

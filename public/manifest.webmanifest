@@ -1,11 +1,14 @@
 {
   "name":"N.A.Diesel Diagnósticos e Programação",
   "short_name":"N.A.Diesel",
+  "id":"/",
   "start_url":"/",
+  "scope":"/",
   "display":"standalone",
+  "orientation":"any",
   "background_color":"#080b0f",
   "theme_color":"#080b0f",
   "icons":[
-    {"src":"/images/logo.png","sizes":"512x512","type":"image/png","purpose":"any maskable"}
+    {"src":"/images/logo.png","sizes":"any","type":"image/png","purpose":"any maskable"}
   ]
 }

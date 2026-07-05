@@ -10,8 +10,6 @@ const ROOT = __dirname;
 const PUBLIC = path.join(ROOT, 'public');
 const DATA_DIR = path.join(ROOT, 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
-const sessions = new Map();
-const biometricChallenges = new Map();
 
 const MIME = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.webmanifest':'application/manifest+json','.svg':'image/svg+xml'};
 const id = p => `${p}_${crypto.randomBytes(7).toString('hex')}`;
@@ -19,27 +17,28 @@ const now = () => new Date().toISOString();
 const passwordHash = password => crypto.scryptSync(String(password), 'gl-electromechanic-v1', 32).toString('hex');
 const b64url = data => Buffer.from(data).toString('base64url');
 const fromB64url = data => Buffer.from(String(data),'base64url');
-const newChallenge = (userId,type) => {const value=b64url(crypto.randomBytes(32));biometricChallenges.set(value,{userId,type,expires:Date.now()+120000});return value;};
-const consumeChallenge = (value,userId,type) => {const item=biometricChallenges.get(value);biometricChallenges.delete(value);return !!(item&&item.userId===userId&&item.type===type&&item.expires>Date.now());};
+const newChallenge = (userId,type) => {const value=b64url(crypto.randomBytes(32));db.biometricChallenges??={};db.biometricChallenges[value]={userId,type,expires:Date.now()+120000};return value;};
+const consumeChallenge = (value,userId,type) => {const item=db.biometricChallenges?.[value];if(db.biometricChallenges)delete db.biometricChallenges[value];return !!(item&&item.userId===userId&&item.type===type&&item.expires>Date.now());};
 
 function seedDB(){
   const users = ['Admin','Gabriel','Leonardo','Naldo'].map((name,i)=>({id:`usr_${i+1}`,name,username:name.toLowerCase(),role:'admin',passwordHash:passwordHash(i===0?'admin123':'1234'),active:true,createdAt:now()}));
   return {
-    meta:{version:1,createdAt:now(),osCounter:10251}, users, shares:[], vehicles:[], clients:[], stock:[], finance:[], orders:[], notifications:[], audit:[],
+    meta:{version:1,createdAt:now(),osCounter:10251}, users, sessions:{}, biometricChallenges:{}, shares:[], vehicles:[], clients:[], stock:[], finance:[], orders:[], notifications:[], audit:[],
     agenda:[]
   };
 }
 function loadDB(){
+  if(process.env.NETLIFY)return seedDB();
   fs.mkdirSync(DATA_DIR,{recursive:true});
   if(!fs.existsSync(DB_FILE)){ const db=seedDB(); saveDB(db); return db; }
-  try{const current=JSON.parse(fs.readFileSync(DB_FILE,'utf8'));current.users??=[];current.users.forEach(u=>u.role='admin');current.clients??=[];current.stock??=[];current.finance??=[];current.vehicles??=[];current.orders??=[];current.orders.forEach(o=>o.paymentTerms??='15-30');current.agenda??=[];current.shares??=[];current.audit??=[];return current;}catch{const db=seedDB();saveDB(db);return db;}
+  try{const current=JSON.parse(fs.readFileSync(DB_FILE,'utf8'));current.users??=[];current.users.forEach(u=>u.role='admin');current.sessions??={};current.biometricChallenges??={};current.clients??=[];current.stock??=[];current.finance??=[];current.vehicles??=[];current.orders??=[];current.orders.forEach(o=>{if(!o.paymentTerms||o.paymentTerms==='15-30')o.paymentTerms='dia-30';if(o.paymentTerms==='dia-05')o.paymentTerms='dia-15'});current.agenda??=[];current.shares??=[];current.audit??=[];return current;}catch{const db=seedDB();saveDB(db);return db;}
 }
-function saveDB(db){ const temp=DB_FILE+'.tmp'; fs.writeFileSync(temp,JSON.stringify(db,null,2)); fs.renameSync(temp,DB_FILE); }
+function saveDB(db){if(process.env.NETLIFY)return;const temp=DB_FILE+'.tmp';fs.writeFileSync(temp,JSON.stringify(db,null,2));fs.renameSync(temp,DB_FILE);}
 let db=loadDB();
 
 function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(data));}
 function body(req){return new Promise((resolve,reject)=>{let raw='';req.on('data',c=>{raw+=c;if(raw.length>100_000_000){reject(new Error('Payload muito grande'));req.destroy();}});req.on('end',()=>{try{resolve(raw?JSON.parse(raw):{});}catch{reject(new Error('JSON inválido'));}});req.on('error',reject);});}
-function auth(req){const token=(req.headers.authorization||'').replace(/^Bearer\s+/,'');const userId=sessions.get(token);return db.users.find(u=>u.id===userId&&u.active);}
+function auth(req){const token=(req.headers.authorization||'').replace(/^Bearer\s+/,'');const userId=db.sessions?.[token];return db.users.find(u=>u.id===userId&&u.active);}
 function safeUser(u){return u&&({id:u.id,name:u.name,username:u.username,role:u.role,active:u.active,avatar:u.avatar||''});}
 function audit(user,action,target){db.audit.unshift({id:id('aud'),userId:user.id,user:user.name,action,target,at:now()});db.audit=db.audit.slice(0,500);}
 function canAccess(user,ownerId,resource,mode='view',resourceId=''){
@@ -53,31 +52,31 @@ async function api(req,res){
   if(method==='POST'&&parts[1]==='login'){
     const b=await body(req);const u=db.users.find(x=>x.active&&(x.username.toLowerCase()===String(b.username||'').toLowerCase()||x.name.toLowerCase()===String(b.username||'').toLowerCase()));
     if(!u||u.passwordHash!==passwordHash(b.password||''))return json(res,401,{error:'Usuário ou senha inválidos.'});
-    const token=crypto.randomBytes(28).toString('hex');sessions.set(token,u.id);audit(u,'login','session');saveDB(db);return json(res,200,{token,user:safeUser(u)});
+    const token=crypto.randomBytes(28).toString('hex');db.sessions??={};db.sessions[token]=u.id;audit(u,'login','session');saveDB(db);return json(res,200,{token,user:safeUser(u)});
   }
   if(method==='POST'&&parts[1]==='biometric'&&parts[2]==='login-options'){
     const b=await body(req);const u=db.users.find(x=>x.active&&(x.username.toLowerCase()===String(b.username||'').toLowerCase()||x.name.toLowerCase()===String(b.username||'').toLowerCase()));
     if(!u||!u.passkeys?.length)return json(res,404,{error:'Biometria ainda não cadastrada para este usuário.'});
-    return json(res,200,{userId:u.id,challenge:newChallenge(u.id,'login'),rpId:'127.0.0.1',allowCredentials:u.passkeys.map(k=>({id:k.credentialId,type:'public-key'}))});
+    const rpId=String(req.headers.host||'127.0.0.1').split(':')[0];return json(res,200,{userId:u.id,challenge:newChallenge(u.id,'login'),rpId,allowCredentials:u.passkeys.map(k=>({id:k.credentialId,type:'public-key'}))});
   }
   if(method==='POST'&&parts[1]==='biometric'&&parts[2]==='login-complete'){
     const b=await body(req);const u=db.users.find(x=>x.id===b.userId&&x.active),key=u?.passkeys?.find(k=>k.credentialId===b.credentialId);if(!u||!key)return json(res,401,{error:'Credencial biométrica inválida.'});
-    try{const client=JSON.parse(fromB64url(b.clientDataJSON).toString('utf8'));if(client.type!=='webauthn.get'||!consumeChallenge(client.challenge,u.id,'login'))throw new Error('Desafio inválido');if(!['http://127.0.0.1:3015','http://localhost:3015'].includes(client.origin))throw new Error('Origem inválida');const authData=fromB64url(b.authenticatorData),expectedRp=crypto.createHash('sha256').update('127.0.0.1').digest();if(!authData.subarray(0,32).equals(expectedRp)||(authData[32]&1)!==1)throw new Error('Autenticador inválido');const signed=Buffer.concat([authData,crypto.createHash('sha256').update(fromB64url(b.clientDataJSON)).digest()]);if(!crypto.verify('sha256',signed,crypto.createPublicKey({key:fromB64url(key.publicKey),format:'der',type:'spki'}),fromB64url(b.signature)))throw new Error('Assinatura inválida');const token=crypto.randomBytes(28).toString('hex');sessions.set(token,u.id);audit(u,'login biométrico',key.name||'dispositivo');saveDB(db);return json(res,200,{token,user:safeUser(u)});}catch(e){return json(res,401,{error:'Não foi possível validar a biometria.'});}
+    try{const client=JSON.parse(fromB64url(b.clientDataJSON).toString('utf8'));if(client.type!=='webauthn.get'||!consumeChallenge(client.challenge,u.id,'login'))throw new Error('Desafio inválido');const origin=new URL(client.origin),rpId=origin.hostname,allowedLocal=client.origin==='http://127.0.0.1:3015'||client.origin==='http://localhost:3015',allowedWeb=origin.protocol==='https:';if(!allowedLocal&&!allowedWeb)throw new Error('Origem inválida');const authData=fromB64url(b.authenticatorData),expectedRp=crypto.createHash('sha256').update(rpId).digest();if(!authData.subarray(0,32).equals(expectedRp)||(authData[32]&1)!==1)throw new Error('Autenticador inválido');const signed=Buffer.concat([authData,crypto.createHash('sha256').update(fromB64url(b.clientDataJSON)).digest()]);if(!crypto.verify('sha256',signed,crypto.createPublicKey({key:fromB64url(key.publicKey),format:'der',type:'spki'}),fromB64url(b.signature)))throw new Error('Assinatura inválida');const token=crypto.randomBytes(28).toString('hex');db.sessions??={};db.sessions[token]=u.id;audit(u,'login biométrico',key.name||'dispositivo');saveDB(db);return json(res,200,{token,user:safeUser(u)});}catch(e){return json(res,401,{error:'Não foi possível validar a biometria.'});}
   }
   const user=auth(req);if(!user)return json(res,401,{error:'Sessão inválida ou expirada.'});
-  if(method==='POST'&&parts[1]==='logout'){for(const [t,uid]of sessions)if(uid===user.id)sessions.delete(t);return json(res,200,{ok:true});}
+  if(method==='POST'&&parts[1]==='logout'){for(const [t,uid]of Object.entries(db.sessions||{}))if(uid===user.id)delete db.sessions[t];saveDB(db);return json(res,200,{ok:true});}
   if(method==='GET'&&parts[1]==='me')return json(res,200,{user:safeUser(user)});
   if(method==='GET'&&parts[1]==='users')return json(res,200,db.users.map(safeUser));
   if(parts[1]==='profile'&&method==='PUT'){const b=await body(req);if(typeof b.name==='string'&&b.name.trim())user.name=b.name.trim().slice(0,80);if(typeof b.avatar==='string'&&(b.avatar===''||b.avatar.startsWith('data:image/')))user.avatar=b.avatar;audit(user,b.avatar?'atualizou avatar':'removeu avatar','perfil');saveDB(db);return json(res,200,{user:safeUser(user)});}
-  if(method==='POST'&&parts[1]==='biometric'&&parts[2]==='register-options')return json(res,200,{challenge:newChallenge(user.id,'register'),rp:{id:'127.0.0.1',name:'N.A.Diesel Diagnósticos e Programação'},user:{id:b64url(user.id),name:user.username,displayName:user.name}});
+  if(method==='POST'&&parts[1]==='biometric'&&parts[2]==='register-options'){const rpId=String(req.headers.host||'127.0.0.1').split(':')[0];return json(res,200,{challenge:newChallenge(user.id,'register'),rp:{id:rpId,name:'N.A.Diesel Diagnósticos e Programação'},user:{id:b64url(user.id),name:user.username,displayName:user.name}});}
   if(method==='POST'&&parts[1]==='biometric'&&parts[2]==='register-complete'){
-    const b=await body(req);let client;try{client=JSON.parse(fromB64url(b.clientDataJSON).toString('utf8'));}catch{return json(res,400,{error:'Resposta biométrica inválida.'});}if(client.type!=='webauthn.create'||!consumeChallenge(client.challenge,user.id,'register')||!['http://127.0.0.1:3015','http://localhost:3015'].includes(client.origin))return json(res,400,{error:'Cadastro biométrico expirado ou inválido.'});if(!b.credentialId||!b.publicKey)return json(res,400,{error:'O dispositivo não forneceu uma chave biométrica compatível.'});user.passkeys??=[];user.passkeys=user.passkeys.filter(k=>k.credentialId!==b.credentialId);user.passkeys.push({credentialId:b.credentialId,publicKey:b.publicKey,name:b.name||'Dispositivo biométrico',createdAt:now()});audit(user,'cadastrou biometria',b.name||'dispositivo');saveDB(db);return json(res,201,{ok:true,count:user.passkeys.length});
+    const b=await body(req);let client;try{client=JSON.parse(fromB64url(b.clientDataJSON).toString('utf8'));}catch{return json(res,400,{error:'Resposta biométrica inválida.'});}let validOrigin=false;try{const origin=new URL(client.origin);validOrigin=(origin.protocol==='https:'||client.origin==='http://127.0.0.1:3015'||client.origin==='http://localhost:3015');}catch{}if(client.type!=='webauthn.create'||!consumeChallenge(client.challenge,user.id,'register')||!validOrigin)return json(res,400,{error:'Cadastro biométrico expirado ou inválido.'});if(!b.credentialId||!b.publicKey)return json(res,400,{error:'O dispositivo não forneceu uma chave biométrica compatível.'});user.passkeys??=[];user.passkeys=user.passkeys.filter(k=>k.credentialId!==b.credentialId);user.passkeys.push({credentialId:b.credentialId,publicKey:b.publicKey,name:b.name||'Dispositivo biométrico',createdAt:now()});audit(user,'cadastrou biometria',b.name||'dispositivo');saveDB(db);return json(res,201,{ok:true,count:user.passkeys.length});
   }
   if(method==='DELETE'&&parts[1]==='biometric'){user.passkeys=[];audit(user,'removeu biometrias','todos os dispositivos');saveDB(db);return json(res,200,{ok:true});}
   if(parts[1]==='backup'){
     if(user.role!=='admin')return json(res,403,{error:'Somente o Administrador pode fazer ou restaurar backups.'});
     if(method==='GET'){audit(user,'gerou backup','banco completo');saveDB(db);return json(res,200,{application:'N.A.Diesel Diagnósticos e Programação',version:1,exportedAt:now(),data:db});}
-    if(method==='POST'){const backup=await body(req),incoming=backup?.data||backup;if(!incoming||!Array.isArray(incoming.users)||!Array.isArray(incoming.vehicles)||!Array.isArray(incoming.orders))return json(res,400,{error:'Arquivo de backup inválido ou incompatível.'});const restored=JSON.parse(JSON.stringify(incoming));restored.clients??=[];restored.stock??=[];restored.finance??=[];restored.agenda??=[];restored.shares??=[];restored.audit??=[];restored.notifications??=[];restored.meta??={version:1,createdAt:now(),osCounter:10251};restored.orders.forEach(o=>o.paymentTerms??='15-30');db=restored;const restoredUser=db.users.find(u=>u.id===user.id)||db.users.find(u=>u.role==='admin');if(restoredUser)audit(restoredUser,'restaurou backup',backup.exportedAt||'arquivo externo');saveDB(db);return json(res,200,{ok:true,message:'Backup restaurado com sucesso.'});}
+    if(method==='POST'){const backup=await body(req),incoming=backup?.data||backup;if(!incoming||!Array.isArray(incoming.users)||!Array.isArray(incoming.vehicles)||!Array.isArray(incoming.orders))return json(res,400,{error:'Arquivo de backup inválido ou incompatível.'});const restored=JSON.parse(JSON.stringify(incoming));restored.clients??=[];restored.stock??=[];restored.finance??=[];restored.agenda??=[];restored.shares??=[];restored.audit??=[];restored.notifications??=[];restored.meta??={version:1,createdAt:now(),osCounter:10251};restored.orders.forEach(o=>{if(!o.paymentTerms||o.paymentTerms==='15-30')o.paymentTerms='dia-30';if(o.paymentTerms==='dia-05')o.paymentTerms='dia-15'});db=restored;const restoredUser=db.users.find(u=>u.id===user.id)||db.users.find(u=>u.role==='admin');if(restoredUser)audit(restoredUser,'restaurou backup',backup.exportedAt||'arquivo externo');saveDB(db);return json(res,200,{ok:true,message:'Backup restaurado com sucesso.'});}
   }
 
   if(parts[1]==='dashboard'&&method==='GET'){
@@ -99,7 +98,7 @@ async function api(req,res){
   if(parts[1]==='orders'){
     if(method==='GET'&&!parts[2])return json(res,200,db.orders.filter(o=>canAccess(user,o.ownerId,'orders','view',o.id)));
     if(method==='GET'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);return o&&canAccess(user,o.ownerId,'orders','view',o.id)?json(res,200,o):json(res,404,{error:'OS não encontrada.'});}
-    if(method==='POST'){const b=await body(req);const o={...b,id:id('os'),number:db.meta.osCounter++,ownerId:user.id,status:b.status||'Aberta',paymentTerms:b.paymentTerms||'15-30',services:[],parts:[],checklist:{},timeline:[{at:now(),label:'OS aberta',user:user.name}],createdAt:now(),updatedAt:now()};db.orders.unshift(o);audit(user,'abriu OS',`#${o.number}`);saveDB(db);return json(res,201,o);}
+    if(method==='POST'){const b=await body(req);const allowed=['dia-15','dia-30','avista','pix','credito','debito'];const o={...b,id:id('os'),number:db.meta.osCounter++,ownerId:user.id,status:b.status||'Aberta',paymentTerms:allowed.includes(b.paymentTerms)?b.paymentTerms:'dia-15',services:[],parts:[],checklist:{},timeline:[{at:now(),label:'OS aberta',user:user.name}],createdAt:now(),updatedAt:now()};db.orders.unshift(o);audit(user,'abriu OS',`#${o.number}`);saveDB(db);return json(res,201,o);}
     if(method==='PUT'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req);Object.assign(o,b,{id:o.id,number:o.number,ownerId:o.ownerId,updatedAt:now()});audit(user,'editou OS',`#${o.number}`);saveDB(db);return json(res,200,o);}
   }
 
@@ -134,4 +133,5 @@ function staticFile(req,res){
 }
 
 const server=http.createServer((req,res)=>{Promise.resolve(req.url.startsWith('/api/')?api(req,res):staticFile(req,res)).catch(err=>{console.error(err);if(!res.headersSent)json(res,500,{error:err.message||'Erro interno.'});});});
-server.listen(PORT,()=>console.log(`N.A.Diesel Diagnósticos e Programação em http://127.0.0.1:${PORT}`));
+if(require.main===module)server.listen(PORT,()=>console.log(`N.A.Diesel Diagnósticos e Programação em http://127.0.0.1:${PORT}`));
+module.exports={api,seedDB,getDatabase:()=>db,setDatabase:value=>{db=value||seedDB();db.sessions??={};db.biometricChallenges??={};}};
