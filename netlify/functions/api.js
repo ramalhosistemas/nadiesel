@@ -3,10 +3,11 @@
 process.env.NA_DIESEL_SERVERLESS='true';
 
 const {Readable}=require('node:stream');
-const {getStore}=require('@netlify/blobs');
+const {connectLambda,getStore}=require('@netlify/blobs');
 const {api,seedDB,getDatabase,setDatabase}=require('../../server');
 
 exports.handler=async event=>{
+  connectLambda(event);
   const store=getStore('na-diesel-data');
   const stored=await store.get('database',{type:'json',consistency:'strong'});
   setDatabase(stored?.data&&stored?.etag?stored.data:(stored||seedDB()));
