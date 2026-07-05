@@ -1,6 +1,6 @@
 'use strict';
 
-process.env.NETLIFY='true';
+process.env.NA_DIESEL_SERVERLESS='true';
 
 const {Readable}=require('node:stream');
 const {getStore}=require('@netlify/blobs');
