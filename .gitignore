@@ -1,0 +1,22 @@
+# Dados locais e backups (nunca publicar)
+data/
+*.backup
+*.bak
+*.json.backup
+
+# Configuração local e dependências
+.env
+.env.*
+node_modules/
+npm-debug.log*
+
+# Arquivos de sistema/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Protótipo antigo e imagem apenas de referência
+gl-electromechanic.html
+public/images/referência tela login.jpg
+public/images/logo1.png

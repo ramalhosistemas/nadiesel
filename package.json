@@ -1,0 +1,11 @@
+{
+  "name": "gl-electromechanic",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sistema de gestão da N.A.Diesel Diagnósticos e Programação",
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js && node --check public/app.js"
+  },
+  "engines": { "node": ">=20" }
+}
