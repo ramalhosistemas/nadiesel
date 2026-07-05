@@ -98,6 +98,14 @@ async function api(req,res){
 
   if(parts[1]==='orders'){
     if(method==='GET'&&!parts[2])return json(res,200,db.orders.filter(o=>canAccess(user,o.ownerId,'orders','view',o.id)));
+    if(method==='POST'&&parts[2]&&parts[3]==='close'){
+      const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissão para finalizar esta OS.'});
+      const b=await body(req),allowed=['dia-15','dia-30','avista','pix','credito','debito'];if(!allowed.includes(b.paymentTerms))return json(res,400,{error:'Prazo ou forma de pagamento inválido.'});
+      const total=(o.services||[]).reduce((sum,item)=>sum+Number(item.value||0),0)+(o.parts||[]).reduce((sum,item)=>sum+Number(item.qty||0)*Number(item.value||0),0),paymentStatus=b.paymentStatus==='paid'?'paid':'pending',closedAt=now();
+      Object.assign(o,{status:'Finalizada',paymentTerms:b.paymentTerms,paymentStatus,paymentDueDate:b.dueDate||'',receivedValue:Number(b.receivedValue||total),financialNotes:b.financialNotes||'',closedAt,updatedAt:closedAt});o.timeline=o.timeline||[];o.timeline.push({at:closedAt,label:paymentStatus==='paid'?'OS finalizada e recebida':'OS finalizada — recebimento pendente',user:user.name});
+      let entry=db.finance.find(x=>x.orderId===o.id);const financeData={description:`Recebimento OS #${o.number}`,type:'Receita',category:'Ordem de Serviço',value:Number(b.receivedValue||total),date:closedAt.slice(0,10),dueDate:b.dueDate||closedAt.slice(0,10),status:paymentStatus,paymentTerms:b.paymentTerms,notes:b.financialNotes||'',orderId:o.id,updatedAt:closedAt};
+      if(entry)Object.assign(entry,financeData);else{entry={...financeData,id:id('fin'),ownerId:o.ownerId,createdAt:closedAt};db.finance.unshift(entry)}audit(user,'finalizou OS',`#${o.number}`);saveDB(db);return json(res,200,{order:o,finance:entry});
+    }
     if(method==='GET'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);return o&&canAccess(user,o.ownerId,'orders','view',o.id)?json(res,200,o):json(res,404,{error:'OS não encontrada.'});}
     if(method==='POST'){const b=await body(req);const allowed=['dia-15','dia-30','avista','pix','credito','debito'];const o={...b,id:id('os'),number:db.meta.osCounter++,ownerId:user.id,status:b.status||'Aberta',paymentTerms:allowed.includes(b.paymentTerms)?b.paymentTerms:'dia-15',services:[],parts:[],checklist:{},timeline:[{at:now(),label:'OS aberta',user:user.name}],createdAt:now(),updatedAt:now()};db.orders.unshift(o);audit(user,'abriu OS',`#${o.number}`);saveDB(db);return json(res,201,o);}
     if(method==='PUT'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req);Object.assign(o,b,{id:o.id,number:o.number,ownerId:o.ownerId,updatedAt:now()});audit(user,'editou OS',`#${o.number}`);saveDB(db);return json(res,200,o);}
