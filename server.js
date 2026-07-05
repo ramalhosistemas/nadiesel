@@ -21,7 +21,8 @@ const newChallenge = (userId,type) => {const value=b64url(crypto.randomBytes(32)
 const consumeChallenge = (value,userId,type) => {const item=db.biometricChallenges?.[value];if(db.biometricChallenges)delete db.biometricChallenges[value];return !!(item&&item.userId===userId&&item.type===type&&item.expires>Date.now());};
 
 function seedDB(){
-  const users = ['Admin','Gabriel','Leonardo','Naldo'].map((name,i)=>({id:`usr_${i+1}`,name,username:name.toLowerCase(),role:'admin',passwordHash:passwordHash(i===0?'admin123':'1234'),active:true,createdAt:now()}));
+  const initialPasswords=[process.env.INITIAL_ADMIN_PASSWORD||'admin123',process.env.INITIAL_GABRIEL_PASSWORD||'1234',process.env.INITIAL_LEONARDO_PASSWORD||'1234',process.env.INITIAL_NALDO_PASSWORD||'1234'];
+  const users = ['Admin','Gabriel','Leonardo','Naldo'].map((name,i)=>({id:`usr_${i+1}`,name,username:name.toLowerCase(),role:'admin',passwordHash:passwordHash(initialPasswords[i]),active:true,createdAt:now()}));
   return {
     meta:{version:1,createdAt:now(),osCounter:10251}, users, sessions:{}, biometricChallenges:{}, shares:[], vehicles:[], clients:[], stock:[], finance:[], orders:[], notifications:[], audit:[],
     agenda:[]

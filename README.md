@@ -17,4 +17,6 @@ Execute `INICIAR-SISTEMA.bat` ou rode `npm start` nesta pasta. Depois, acesse `h
 
 Troque as senhas antes de disponibilizar o sistema em uma rede pública.
 
+No Netlify, configure `INITIAL_ADMIN_PASSWORD`, `INITIAL_GABRIEL_PASSWORD`, `INITIAL_LEONARDO_PASSWORD` e `INITIAL_NALDO_PASSWORD` como variáveis de ambiente antes do primeiro acesso.
+
 Os dados são persistidos em `data/db.json`, criado automaticamente na primeira execução. Faça backup periódico desse arquivo.
