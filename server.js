@@ -62,7 +62,7 @@ function canAccess(user,ownerId,resource,mode='view',resourceId=''){
   return db.shares.some(s=>s.ownerId===ownerId&&s.recipientId===user.id&&s.resource===resource&&(!s.resourceId||s.resourceId===resourceId)&&s.status==='approved'&&(mode==='view'||s.permission==='edit'));
 }
 function routeParts(url){return new URL(url,'http://localhost').pathname.split('/').filter(Boolean);}
-function orderTotal(o){return (o.services||[]).reduce((sum,item)=>sum+Number(item.value||0),0)+(o.parts||[]).reduce((sum,item)=>sum+Number(item.qty||0)*Number(item.value||0),0)+(o.expenses||[]).reduce((sum,item)=>sum+Number(item.value||0),0);}
+function orderTotal(o){return (o.services||[]).reduce((sum,item)=>sum+Number(item.value||0),0)-(o.parts||[]).reduce((sum,item)=>sum+Number(item.qty||0)*Number(item.value||0),0)-(o.expenses||[]).reduce((sum,item)=>sum+Number(item.value||0),0);}
 function syncClientFromVehicle(vehicle,user){
   if(vehicle.clientSyncDisabled)return;
   const name=String(vehicle.company||vehicle.ownerName||'').trim();if(!name)return;
