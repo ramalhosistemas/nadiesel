@@ -31,11 +31,23 @@ function seedDB(){
     agenda:[]
   };
 }
+function normalizeDB(value){
+  const normalized=value&&typeof value==='object'?value:{};
+  const collections=['users','vehicles','clients','stock','finance','orders','notifications','agenda','shares','audit'];
+  collections.forEach(key=>{if(!Array.isArray(normalized[key]))normalized[key]=[]});
+  normalized.sessions=normalized.sessions&&typeof normalized.sessions==='object'&&!Array.isArray(normalized.sessions)?normalized.sessions:{};
+  normalized.biometricChallenges=normalized.biometricChallenges&&typeof normalized.biometricChallenges==='object'&&!Array.isArray(normalized.biometricChallenges)?normalized.biometricChallenges:{};
+  normalized.meta=normalized.meta&&typeof normalized.meta==='object'?normalized.meta:{version:1,createdAt:now(),osCounter:10251};
+  normalized.meta.version??=1;normalized.meta.createdAt??=now();normalized.meta.osCounter=Number(normalized.meta.osCounter||10251);
+  normalized.users.forEach(user=>{user.role=user.role||'admin';user.active=user.active!==false;user.passkeys=Array.isArray(user.passkeys)?user.passkeys:[]});
+  normalized.orders.forEach(order=>{order.services=Array.isArray(order.services)?order.services:[];order.parts=Array.isArray(order.parts)?order.parts:[];order.expenses=Array.isArray(order.expenses)?order.expenses:[];order.timeline=Array.isArray(order.timeline)?order.timeline:[];order.checklist=order.checklist&&typeof order.checklist==='object'&&!Array.isArray(order.checklist)?order.checklist:{};if(!order.paymentTerms||order.paymentTerms==='15-30')order.paymentTerms='dia-30';if(order.paymentTerms==='dia-05')order.paymentTerms='dia-15'});
+  return normalized;
+}
 function loadDB(){
   if(process.env.NA_DIESEL_SERVERLESS||process.env.AWS_LAMBDA_FUNCTION_NAME||process.env.LAMBDA_TASK_ROOT)return seedDB();
   fs.mkdirSync(DATA_DIR,{recursive:true});
   if(!fs.existsSync(DB_FILE)){ const db=seedDB(); saveDB(db); return db; }
-  try{const current=JSON.parse(fs.readFileSync(DB_FILE,'utf8'));current.users??=[];current.users.forEach(u=>u.role='admin');current.sessions??={};current.biometricChallenges??={};current.clients??=[];current.stock??=[];current.finance??=[];current.vehicles??=[];current.orders??=[];current.orders.forEach(o=>{if(!o.paymentTerms||o.paymentTerms==='15-30')o.paymentTerms='dia-30';if(o.paymentTerms==='dia-05')o.paymentTerms='dia-15'});current.agenda??=[];current.shares??=[];current.audit??=[];return current;}catch{const db=seedDB();saveDB(db);return db;}
+  try{return normalizeDB(JSON.parse(fs.readFileSync(DB_FILE,'utf8')))}catch{const db=seedDB();saveDB(db);return db;}
 }
 function saveDB(db){if(process.env.NA_DIESEL_SERVERLESS||process.env.AWS_LAMBDA_FUNCTION_NAME||process.env.LAMBDA_TASK_ROOT)return;const temp=DB_FILE+'.tmp';fs.writeFileSync(temp,JSON.stringify(db,null,2));fs.renameSync(temp,DB_FILE);}
 let db=loadDB();
@@ -96,11 +108,11 @@ async function api(req,res){
   if(parts[1]==='backup'){
     if(user.role!=='admin')return json(res,403,{error:'Somente o Administrador pode fazer ou restaurar backups.'});
     if(method==='GET'){audit(user,'gerou backup','banco completo');saveDB(db);return json(res,200,{application:'N.A.Diesel Diagnósticos e Programação',version:1,exportedAt:now(),data:db});}
-    if(method==='POST'){const backup=await body(req),incoming=backup?.data||backup;if(!incoming||!Array.isArray(incoming.users)||!Array.isArray(incoming.vehicles)||!Array.isArray(incoming.orders))return json(res,400,{error:'Arquivo de backup inválido ou incompatível.'});const restored=JSON.parse(JSON.stringify(incoming));restored.clients??=[];restored.stock??=[];restored.finance??=[];restored.agenda??=[];restored.shares??=[];restored.audit??=[];restored.notifications??=[];restored.meta??={version:1,createdAt:now(),osCounter:10251};restored.orders.forEach(o=>{if(!o.paymentTerms||o.paymentTerms==='15-30')o.paymentTerms='dia-30';if(o.paymentTerms==='dia-05')o.paymentTerms='dia-15'});db=restored;const restoredUser=db.users.find(u=>u.id===user.id)||db.users.find(u=>u.role==='admin');if(restoredUser)audit(restoredUser,'restaurou backup',backup.exportedAt||'arquivo externo');saveDB(db);return json(res,200,{ok:true,message:'Backup restaurado com sucesso.'});}
+    if(method==='POST'){const backup=await body(req),incoming=backup?.data||backup;if(!incoming||!Array.isArray(incoming.users)||!Array.isArray(incoming.vehicles)||!Array.isArray(incoming.orders))return json(res,400,{error:'Arquivo de backup inválido ou incompatível.'});const restored=normalizeDB(JSON.parse(JSON.stringify(incoming)));const restoredUser=restored.users.find(u=>u.id===user.id)||restored.users.find(u=>u.role==='admin');if(!restoredUser)return json(res,400,{error:'O backup não possui um usuário administrador válido.'});db=restored;audit(restoredUser,'restaurou backup',backup.exportedAt||'arquivo externo');saveDB(db);return json(res,200,{ok:true,message:'Backup restaurado com sucesso. Os dados foram atualizados para a versão atual.'});}
   }
 
   if(parts[1]==='dashboard'&&method==='GET'){
-    const vehicles=db.vehicles.filter(v=>canAccess(user,v.ownerId,'vehicles'));
+    db=normalizeDB(db);const vehicles=db.vehicles.filter(v=>canAccess(user,v.ownerId,'vehicles'));
     const orders=db.orders.filter(o=>canAccess(user,o.ownerId,'orders','view',o.id));
     const today=new Date(),todayKey=today.toISOString().slice(0,10),monthKey=today.toISOString().slice(0,7),monthNames=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
     const monthlyRevenue=Array.from({length:12},(_,index)=>{const d=new Date(today.getFullYear(),today.getMonth()-11+index,1),key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,value=db.finance.filter(item=>item.type==='Receita'&&item.status!=='pending'&&String(item.date||item.createdAt||'').startsWith(key)).reduce((sum,item)=>sum+Number(item.value||0),0);return{key,label:monthNames[d.getMonth()],value}}),currentRevenue=monthlyRevenue.at(-1)?.value||0,finishedThisMonth=orders.filter(o=>o.status==='Finalizada'&&String(o.closedAt||o.updatedAt||'').startsWith(monthKey)).length,readyThisMonth=new Set(orders.filter(o=>['Finalizada','Entregue'].includes(o.status)&&String(o.closedAt||o.updatedAt||'').startsWith(monthKey)).map(o=>o.vehicleId).filter(Boolean)).size;
