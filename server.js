@@ -14,6 +14,7 @@ const DB_FILE = path.join(DATA_DIR, 'db.json');
 const MIME = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8','.js':'application/javascript; charset=utf-8','.json':'application/json; charset=utf-8','.jpg':'image/jpeg','.jpeg':'image/jpeg','.png':'image/png','.webmanifest':'application/manifest+json','.svg':'image/svg+xml'};
 const id = p => `${p}_${crypto.randomBytes(7).toString('hex')}`;
 const now = () => new Date().toISOString();
+const orderNumber = value => String(Math.max(0, Number(value) || 0)).padStart(5, '0');
 const passwordHash = password => crypto.scryptSync(String(password), 'gl-electromechanic-v1', 32).toString('hex');
 const AUTH_SECRET=process.env.AUTH_SECRET||'na-diesel-auth-v2-2026';
 const createAuthToken=userId=>{const payload=Buffer.from(JSON.stringify({sub:userId,iat:Date.now(),nonce:crypto.randomBytes(12).toString('hex')})).toString('base64url'),signature=crypto.createHmac('sha256',AUTH_SECRET).update(payload).digest('base64url');return `${payload}.${signature}`};
@@ -27,7 +28,7 @@ function seedDB(){
   const initialPasswords=[process.env.INITIAL_ADMIN_PASSWORD||'admin123',process.env.INITIAL_GABRIEL_PASSWORD||'1234',process.env.INITIAL_LEONARDO_PASSWORD||'1234',process.env.INITIAL_NALDO_PASSWORD||'1234'];
   const users = ['Admin','Gabriel','Leonardo','Naldo'].map((name,i)=>({id:`usr_${i+1}`,name,username:name.toLowerCase(),role:'admin',passwordHash:passwordHash(initialPasswords[i]),active:true,createdAt:now()}));
   return {
-    meta:{version:1,createdAt:now(),osCounter:10251}, users, sessions:{}, biometricChallenges:{}, shares:[], vehicles:[], clients:[], stock:[], finance:[], orders:[], notifications:[], audit:[],
+    meta:{version:1,createdAt:now(),osCounter:1}, users, sessions:{}, biometricChallenges:{}, shares:[], vehicles:[], clients:[], stock:[], finance:[], orders:[], notifications:[], audit:[],
     agenda:[]
   };
 }
@@ -37,8 +38,8 @@ function normalizeDB(value){
   collections.forEach(key=>{if(!Array.isArray(normalized[key]))normalized[key]=[]});
   normalized.sessions=normalized.sessions&&typeof normalized.sessions==='object'&&!Array.isArray(normalized.sessions)?normalized.sessions:{};
   normalized.biometricChallenges=normalized.biometricChallenges&&typeof normalized.biometricChallenges==='object'&&!Array.isArray(normalized.biometricChallenges)?normalized.biometricChallenges:{};
-  normalized.meta=normalized.meta&&typeof normalized.meta==='object'?normalized.meta:{version:1,createdAt:now(),osCounter:10251};
-  normalized.meta.version??=1;normalized.meta.createdAt??=now();normalized.meta.osCounter=Number(normalized.meta.osCounter||10251);
+  normalized.meta=normalized.meta&&typeof normalized.meta==='object'?normalized.meta:{version:1,createdAt:now(),osCounter:1};
+  normalized.meta.version??=1;normalized.meta.createdAt??=now();normalized.meta.osCounter=Number(normalized.meta.osCounter||1);
   normalized.users.forEach(user=>{user.role=user.role||'admin';user.active=user.active!==false;user.passkeys=Array.isArray(user.passkeys)?user.passkeys:[]});
   normalized.orders.forEach(order=>{order.services=Array.isArray(order.services)?order.services:[];order.parts=Array.isArray(order.parts)?order.parts:[];order.expenses=Array.isArray(order.expenses)?order.expenses:[];order.timeline=Array.isArray(order.timeline)?order.timeline:[];order.checklist=order.checklist&&typeof order.checklist==='object'&&!Array.isArray(order.checklist)?order.checklist:{};if(!order.paymentTerms||order.paymentTerms==='15-30')order.paymentTerms='dia-30';if(order.paymentTerms==='dia-05')order.paymentTerms='dia-15'});
   return normalized;
@@ -137,18 +138,18 @@ async function api(req,res){
       const b=await body(req),allowed=['dia-15','dia-30','avista','pix','credito','debito'];if(!allowed.includes(b.paymentTerms))return json(res,400,{error:'Prazo ou forma de pagamento inválido.'});
       const total=orderTotal(o),paymentStatus=b.paymentStatus==='paid'?'paid':'pending',closedAt=now();
       Object.assign(o,{status:'Finalizada',paymentTerms:b.paymentTerms,paymentStatus,paymentDueDate:b.dueDate||'',receivedValue:Number(b.receivedValue||total),financialNotes:b.financialNotes||'',closedAt,updatedAt:closedAt});o.timeline=o.timeline||[];o.timeline.push({at:closedAt,label:paymentStatus==='paid'?'OS finalizada e recebida':'OS finalizada — recebimento pendente',user:user.name});
-      let entry=db.finance.find(x=>x.orderId===o.id);const financeData={description:`Recebimento OS #${o.number}`,type:'Receita',category:'Ordem de Serviço',value:Number(b.receivedValue||total),date:closedAt.slice(0,10),dueDate:b.dueDate||closedAt.slice(0,10),status:paymentStatus,paymentTerms:b.paymentTerms,notes:b.financialNotes||'',orderId:o.id,updatedAt:closedAt};
-      if(entry)Object.assign(entry,financeData);else{entry={...financeData,id:id('fin'),ownerId:o.ownerId,createdAt:closedAt};db.finance.unshift(entry)}audit(user,'finalizou OS',`#${o.number}`);saveDB(db);return json(res,200,{order:o,finance:entry});
+      let entry=db.finance.find(x=>x.orderId===o.id);const financeData={description:`Recebimento OS #${orderNumber(o.number)}`,type:'Receita',category:'Ordem de Serviço',value:Number(b.receivedValue||total),date:closedAt.slice(0,10),dueDate:b.dueDate||closedAt.slice(0,10),status:paymentStatus,paymentTerms:b.paymentTerms,notes:b.financialNotes||'',orderId:o.id,updatedAt:closedAt};
+      if(entry)Object.assign(entry,financeData);else{entry={...financeData,id:id('fin'),ownerId:o.ownerId,createdAt:closedAt};db.finance.unshift(entry)}audit(user,'finalizou OS',`#${orderNumber(o.number)}`);saveDB(db);return json(res,200,{order:o,finance:entry});
     }
     if(method==='POST'&&parts[2]&&parts[3]==='cancel'){
       const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissao para cancelar esta OS.'});
       const b=await body(req),reason=String(b.reason||'').trim();if(!reason)return json(res,400,{error:'Informe o motivo do cancelamento.'});
       const cancelledAt=now();Object.assign(o,{status:'Cancelada',cancellationReason:reason,cancelledAt,cancelledBy:user.name,updatedAt:cancelledAt});o.timeline=o.timeline||[];o.timeline.push({at:cancelledAt,label:`OS cancelada: ${reason}`,user:user.name});
-      const financeIndex=db.finance.findIndex(x=>x.orderId===o.id&&x.status==='pending');if(financeIndex>=0)db.finance.splice(financeIndex,1);audit(user,'cancelou OS',`#${o.number}: ${reason}`);saveDB(db);return json(res,200,o);
+      const financeIndex=db.finance.findIndex(x=>x.orderId===o.id&&x.status==='pending');if(financeIndex>=0)db.finance.splice(financeIndex,1);audit(user,'cancelou OS',`#${orderNumber(o.number)}: ${reason}`);saveDB(db);return json(res,200,o);
     }
     if(method==='GET'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);return o&&canAccess(user,o.ownerId,'orders','view',o.id)?json(res,200,o):json(res,404,{error:'OS não encontrada.'});}
-    if(method==='POST'){const b=await body(req);const allowed=['dia-15','dia-30','avista','pix','credito','debito'];const o={...b,warrantyDays:Math.max(0,Number(b.warrantyDays||90)),id:id('os'),number:db.meta.osCounter++,ownerId:user.id,status:b.status||'Aberta',paymentTerms:allowed.includes(b.paymentTerms)?b.paymentTerms:'dia-15',services:[],parts:[],expenses:[],checklist:{},timeline:[{at:now(),label:'OS aberta',user:user.name}],createdAt:now(),updatedAt:now()};syncOrderClient(o);db.orders.unshift(o);audit(user,'abriu OS',`#${o.number}`);saveDB(db);return json(res,201,o);}
-    if(method==='PUT'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req),previousStatus=o.status,updatedAt=now();Object.assign(o,b,{id:o.id,number:o.number,ownerId:o.ownerId,warrantyDays:Math.max(0,Number(b.warrantyDays??o.warrantyDays??90)),updatedAt});if(b.status==='Entregue'&&previousStatus!=='Entregue')o.deliveredAt=updatedAt;o.expenses??=[];syncOrderClient(o);audit(user,'editou OS',`#${o.number}`);saveDB(db);return json(res,200,o);}
+    if(method==='POST'){const b=await body(req);const allowed=['dia-15','dia-30','avista','pix','credito','debito'];const o={...b,warrantyDays:Math.max(0,Number(b.warrantyDays||90)),id:id('os'),number:db.meta.osCounter++,ownerId:user.id,status:b.status||'Aberta',paymentTerms:allowed.includes(b.paymentTerms)?b.paymentTerms:'dia-15',services:[],parts:[],expenses:[],checklist:{},timeline:[{at:now(),label:'OS aberta',user:user.name}],createdAt:now(),updatedAt:now()};syncOrderClient(o);db.orders.unshift(o);audit(user,'abriu OS',`#${orderNumber(o.number)}`);saveDB(db);return json(res,201,o);}
+    if(method==='PUT'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req),previousStatus=o.status,updatedAt=now();Object.assign(o,b,{id:o.id,number:o.number,ownerId:o.ownerId,warrantyDays:Math.max(0,Number(b.warrantyDays??o.warrantyDays??90)),updatedAt});if(b.status==='Entregue'&&previousStatus!=='Entregue')o.deliveredAt=updatedAt;o.expenses??=[];syncOrderClient(o);audit(user,'editou OS',`#${orderNumber(o.number)}`);saveDB(db);return json(res,200,o);}
   }
 
   if(parts[1]==='agenda'){
