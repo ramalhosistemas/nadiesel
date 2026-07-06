@@ -64,6 +64,7 @@ function canAccess(user,ownerId,resource,mode='view',resourceId=''){
 function routeParts(url){return new URL(url,'http://localhost').pathname.split('/').filter(Boolean);}
 function orderTotal(o){return (o.services||[]).reduce((sum,item)=>sum+Number(item.value||0),0)+(o.parts||[]).reduce((sum,item)=>sum+Number(item.qty||0)*Number(item.value||0),0)+(o.expenses||[]).reduce((sum,item)=>sum+Number(item.value||0),0);}
 function syncClientFromVehicle(vehicle,user){
+  if(vehicle.clientSyncDisabled)return;
   const name=String(vehicle.company||vehicle.ownerName||'').trim();if(!name)return;
   const doc=String(vehicle.document||'').replace(/\D/g,'');
   let client=(doc&&db.clients.find(c=>String(c.document||'').replace(/\D/g,'')===doc))||db.clients.find(c=>String(c.name||'').trim().toLowerCase()===name.toLowerCase()&&canAccess(user,c.ownerId,'clients','edit'));
@@ -125,7 +126,7 @@ async function api(req,res){
     if(method==='POST'){
       const b=await body(req);const v={...b,id:id('veh'),ownerId:user.id,photos:Array.isArray(b.photos)?b.photos.slice(0,8):[],active:b.active!==false,createdAt:now(),updatedAt:now()};syncClientFromVehicle(v,user);db.vehicles.unshift(v);audit(user,'criou veículo',v.plate||v.id);saveDB(db);return json(res,201,v);
     }
-    if(method==='PUT'&&parts[2]){const v=db.vehicles.find(x=>x.id===parts[2]);if(!v||!canAccess(user,v.ownerId,'vehicles','edit'))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req);Object.assign(v,b,{id:v.id,ownerId:v.ownerId,photos:Array.isArray(b.photos)?b.photos.slice(0,8):v.photos,updatedAt:now()});syncClientFromVehicle(v,user);db.orders.filter(o=>o.vehicleId===v.id).forEach(syncOrderClient);audit(user,'editou veículo',v.plate||v.id);saveDB(db);return json(res,200,v);}
+    if(method==='PUT'&&parts[2]){const v=db.vehicles.find(x=>x.id===parts[2]);if(!v||!canAccess(user,v.ownerId,'vehicles','edit'))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req);Object.assign(v,b,{id:v.id,ownerId:v.ownerId,photos:Array.isArray(b.photos)?b.photos.slice(0,8):v.photos,updatedAt:now(),clientSyncDisabled:false});syncClientFromVehicle(v,user);db.orders.filter(o=>o.vehicleId===v.id).forEach(syncOrderClient);audit(user,'editou veículo',v.plate||v.id);saveDB(db);return json(res,200,v);}
     if(method==='DELETE'&&parts[2]){const i=db.vehicles.findIndex(x=>x.id===parts[2]);if(i<0||!canAccess(user,db.vehicles[i].ownerId,'vehicles','edit'))return json(res,403,{error:'Sem permissão.'});const [v]=db.vehicles.splice(i,1);audit(user,'removeu veículo',v.plate||v.id);saveDB(db);return json(res,200,{ok:true});}
   }
 
@@ -156,12 +157,12 @@ async function api(req,res){
   }
 
   if(['clients','stock','finance'].includes(parts[1])){
-    const collection=parts[1];
+    db=normalizeDB(db);const collection=parts[1];
     if(method==='GET'&&!parts[2]){if(collection==='clients'){db.vehicles.filter(v=>canAccess(user,v.ownerId,'vehicles')).forEach(v=>syncClientFromVehicle(v,user));saveDB(db)}return json(res,200,db[collection].filter(x=>canAccess(user,x.ownerId,collection)));}
     if(method==='GET'&&parts[2]){const item=db[collection].find(x=>x.id===parts[2]);return item&&canAccess(user,item.ownerId,collection)?json(res,200,item):json(res,404,{error:'Registro não encontrado.'});}
-    if(method==='POST'){const b=await body(req);const item={...b,id:id(collection.slice(0,3)),ownerId:user.id,createdAt:now(),updatedAt:now()};db[collection].unshift(item);audit(user,`criou registro em ${collection}`,item.name||item.description||item.id);saveDB(db);return json(res,201,item);}
+    if(method==='POST'){const b=await body(req);if(collection==='clients'&&!String(b.name||'').trim())return json(res,400,{error:'Informe o nome do cliente.'});if(collection==='stock'&&!String(b.name||'').trim())return json(res,400,{error:'Informe a descrição do item.'});if(collection==='finance'&&!String(b.description||'').trim())return json(res,400,{error:'Informe a descrição do lançamento.'});const item={...b,id:id(collection.slice(0,3)),ownerId:user.id,createdAt:now(),updatedAt:now()};if(collection==='stock')Object.assign(item,{quantity:Number(b.quantity||0),minimum:Number(b.minimum||0),value:Number(b.value||0)});if(collection==='finance')item.value=Number(b.value||0);db[collection].unshift(item);audit(user,`criou registro em ${collection}`,item.name||item.description||item.id);saveDB(db);return json(res,201,item);}
     if(method==='PUT'&&parts[2]){const item=db[collection].find(x=>x.id===parts[2]);if(!item||!canAccess(user,item.ownerId,collection,'edit'))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req);Object.assign(item,b,{id:item.id,ownerId:item.ownerId,updatedAt:now()});audit(user,`editou registro em ${collection}`,item.name||item.description||item.id);saveDB(db);return json(res,200,item);}
-    if(method==='DELETE'&&parts[2]){const i=db[collection].findIndex(x=>x.id===parts[2]);if(i<0||!canAccess(user,db[collection][i].ownerId,collection,'edit'))return json(res,403,{error:'Sem permissão.'});db[collection].splice(i,1);saveDB(db);return json(res,200,{ok:true});}
+    if(method==='DELETE'&&parts[2]){const i=db[collection].findIndex(x=>x.id===parts[2]);if(i<0||!canAccess(user,db[collection][i].ownerId,collection,'edit'))return json(res,403,{error:'Sem permissão.'});const [removed]=db[collection].splice(i,1);if(collection==='clients')db.vehicles.filter(v=>v.clientId===removed.id).forEach(v=>{v.clientId='';v.clientName='';v.clientSyncDisabled=true;v.updatedAt=now()});audit(user,`excluiu registro em ${collection}`,removed.name||removed.description||removed.id);saveDB(db);return json(res,200,{ok:true});}
   }
 
   if(parts[1]==='shares'){
