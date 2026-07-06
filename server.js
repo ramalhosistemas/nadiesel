@@ -50,6 +50,22 @@ function canAccess(user,ownerId,resource,mode='view',resourceId=''){
   return db.shares.some(s=>s.ownerId===ownerId&&s.recipientId===user.id&&s.resource===resource&&(!s.resourceId||s.resourceId===resourceId)&&s.status==='approved'&&(mode==='view'||s.permission==='edit'));
 }
 function routeParts(url){return new URL(url,'http://localhost').pathname.split('/').filter(Boolean);}
+function orderTotal(o){return (o.services||[]).reduce((sum,item)=>sum+Number(item.value||0),0)+(o.parts||[]).reduce((sum,item)=>sum+Number(item.qty||0)*Number(item.value||0),0)+(o.expenses||[]).reduce((sum,item)=>sum+Number(item.value||0),0);}
+function syncClientFromVehicle(vehicle,user){
+  const name=String(vehicle.company||vehicle.ownerName||'').trim();if(!name)return;
+  const doc=String(vehicle.document||'').replace(/\D/g,'');
+  let client=(doc&&db.clients.find(c=>String(c.document||'').replace(/\D/g,'')===doc))||db.clients.find(c=>String(c.name||'').trim().toLowerCase()===name.toLowerCase()&&canAccess(user,c.ownerId,'clients','edit'));
+  const data={name,document:vehicle.document||'',contact:vehicle.contact||'',phone:vehicle.phone||'',email:vehicle.email||'',city:vehicle.city||'',state:vehicle.state||'',updatedAt:now()};
+  if(client&&canAccess(user,client.ownerId,'clients','edit'))Object.assign(client,data);
+  else{client={...data,id:id('cli'),ownerId:user.id,createdAt:now()};db.clients.unshift(client)}
+  vehicle.clientId=client.id;vehicle.clientName=client.name;
+}
+function syncOrderClient(order){
+  const vehicle=db.vehicles.find(v=>v.id===order.vehicleId);
+  const client=db.clients.find(c=>c.id===order.clientId);
+  if(client)order.clientName=client.name;
+  else if(vehicle){order.clientId=vehicle.clientId||order.clientId||'';order.clientName=vehicle.clientName||vehicle.company||vehicle.ownerName||order.clientName||'';}
+}
 
 async function api(req,res){
   const parts=routeParts(req.url); const method=req.method;
@@ -87,17 +103,17 @@ async function api(req,res){
     const vehicles=db.vehicles.filter(v=>canAccess(user,v.ownerId,'vehicles'));
     const orders=db.orders.filter(o=>canAccess(user,o.ownerId,'orders','view',o.id));
     const today=new Date(),todayKey=today.toISOString().slice(0,10),monthKey=today.toISOString().slice(0,7),monthNames=['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-    const monthlyRevenue=Array.from({length:12},(_,index)=>{const d=new Date(today.getFullYear(),today.getMonth()-11+index,1),key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,value=db.finance.filter(item=>item.type==='Receita'&&item.status!=='pending'&&String(item.date||item.createdAt||'').startsWith(key)).reduce((sum,item)=>sum+Number(item.value||0),0);return{key,label:monthNames[d.getMonth()],value}}),currentRevenue=monthlyRevenue.at(-1)?.value||0,finishedThisMonth=orders.filter(o=>o.status==='Finalizada'&&String(o.closedAt||o.updatedAt||'').startsWith(monthKey)).length;
-    return json(res,200,{vehicles,orders,agenda:db.agenda.filter(a=>canAccess(user,a.ownerId,'agenda')),indicators:{monthlyRevenue,currentRevenue,finishedThisMonth,averageTicket:finishedThisMonth?currentRevenue/finishedThisMonth:0},stats:{vehicles:vehicles.length,open:orders.filter(o=>!['Finalizada','Entregue'].includes(o.status)).length,waiting:orders.filter(o=>o.status==='Aguardando peça').length,electrical:orders.filter(o=>o.category==='Elétrica'&&!['Finalizada','Entregue'].includes(o.status)).length,mechanical:orders.filter(o=>o.category==='Mecânica'&&!['Finalizada','Entregue'].includes(o.status)).length,finished:orders.filter(o=>o.status==='Finalizada'&&String(o.closedAt||o.updatedAt||'').startsWith(todayKey)).length,delivered:orders.filter(o=>o.status==='Entregue'&&String(o.updatedAt||'').startsWith(todayKey)).length}});
+    const monthlyRevenue=Array.from({length:12},(_,index)=>{const d=new Date(today.getFullYear(),today.getMonth()-11+index,1),key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,value=db.finance.filter(item=>item.type==='Receita'&&item.status!=='pending'&&String(item.date||item.createdAt||'').startsWith(key)).reduce((sum,item)=>sum+Number(item.value||0),0);return{key,label:monthNames[d.getMonth()],value}}),currentRevenue=monthlyRevenue.at(-1)?.value||0,finishedThisMonth=orders.filter(o=>o.status==='Finalizada'&&String(o.closedAt||o.updatedAt||'').startsWith(monthKey)).length,readyThisMonth=new Set(orders.filter(o=>['Finalizada','Entregue'].includes(o.status)&&String(o.closedAt||o.updatedAt||'').startsWith(monthKey)).map(o=>o.vehicleId).filter(Boolean)).size;
+    return json(res,200,{vehicles,orders,agenda:db.agenda.filter(a=>canAccess(user,a.ownerId,'agenda')),indicators:{monthlyRevenue,currentRevenue,finishedThisMonth,readyThisMonth,averageTicket:finishedThisMonth?currentRevenue/finishedThisMonth:0},stats:{vehicles:vehicles.length,open:orders.filter(o=>!['Finalizada','Entregue','Cancelada'].includes(o.status)).length,waiting:orders.filter(o=>o.status==='Aguardando peça').length,electrical:orders.filter(o=>o.category==='Elétrica'&&!['Finalizada','Entregue','Cancelada'].includes(o.status)).length,mechanical:orders.filter(o=>o.category==='Mecânica'&&!['Finalizada','Entregue','Cancelada'].includes(o.status)).length,finished:orders.filter(o=>o.status==='Finalizada'&&String(o.closedAt||o.updatedAt||'').startsWith(todayKey)).length,delivered:orders.filter(o=>o.status==='Entregue'&&String(o.updatedAt||'').startsWith(todayKey)).length,readyThisMonth}});
   }
 
   if(parts[1]==='vehicles'){
-    if(method==='GET'&&!parts[2])return json(res,200,db.vehicles.filter(v=>canAccess(user,v.ownerId,'vehicles')));
+    if(method==='GET'&&!parts[2]){const vehicles=db.vehicles.filter(v=>canAccess(user,v.ownerId,'vehicles'));vehicles.forEach(v=>syncClientFromVehicle(v,user));saveDB(db);return json(res,200,vehicles);}
     if(method==='GET'&&parts[2]){const v=db.vehicles.find(x=>x.id===parts[2]);return v&&canAccess(user,v.ownerId,'vehicles')?json(res,200,v):json(res,404,{error:'Veículo não encontrado.'});}
     if(method==='POST'){
-      const b=await body(req);const v={...b,id:id('veh'),ownerId:user.id,photos:Array.isArray(b.photos)?b.photos.slice(0,8):[],active:b.active!==false,createdAt:now(),updatedAt:now()};db.vehicles.unshift(v);audit(user,'criou veículo',v.plate||v.id);saveDB(db);return json(res,201,v);
+      const b=await body(req);const v={...b,id:id('veh'),ownerId:user.id,photos:Array.isArray(b.photos)?b.photos.slice(0,8):[],active:b.active!==false,createdAt:now(),updatedAt:now()};syncClientFromVehicle(v,user);db.vehicles.unshift(v);audit(user,'criou veículo',v.plate||v.id);saveDB(db);return json(res,201,v);
     }
-    if(method==='PUT'&&parts[2]){const v=db.vehicles.find(x=>x.id===parts[2]);if(!v||!canAccess(user,v.ownerId,'vehicles','edit'))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req);Object.assign(v,b,{id:v.id,ownerId:v.ownerId,photos:Array.isArray(b.photos)?b.photos.slice(0,8):v.photos,updatedAt:now()});audit(user,'editou veículo',v.plate||v.id);saveDB(db);return json(res,200,v);}
+    if(method==='PUT'&&parts[2]){const v=db.vehicles.find(x=>x.id===parts[2]);if(!v||!canAccess(user,v.ownerId,'vehicles','edit'))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req);Object.assign(v,b,{id:v.id,ownerId:v.ownerId,photos:Array.isArray(b.photos)?b.photos.slice(0,8):v.photos,updatedAt:now()});syncClientFromVehicle(v,user);db.orders.filter(o=>o.vehicleId===v.id).forEach(syncOrderClient);audit(user,'editou veículo',v.plate||v.id);saveDB(db);return json(res,200,v);}
     if(method==='DELETE'&&parts[2]){const i=db.vehicles.findIndex(x=>x.id===parts[2]);if(i<0||!canAccess(user,db.vehicles[i].ownerId,'vehicles','edit'))return json(res,403,{error:'Sem permissão.'});const [v]=db.vehicles.splice(i,1);audit(user,'removeu veículo',v.plate||v.id);saveDB(db);return json(res,200,{ok:true});}
   }
 
@@ -106,14 +122,20 @@ async function api(req,res){
     if(method==='POST'&&parts[2]&&parts[3]==='close'){
       const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissão para finalizar esta OS.'});
       const b=await body(req),allowed=['dia-15','dia-30','avista','pix','credito','debito'];if(!allowed.includes(b.paymentTerms))return json(res,400,{error:'Prazo ou forma de pagamento inválido.'});
-      const total=(o.services||[]).reduce((sum,item)=>sum+Number(item.value||0),0)+(o.parts||[]).reduce((sum,item)=>sum+Number(item.qty||0)*Number(item.value||0),0),paymentStatus=b.paymentStatus==='paid'?'paid':'pending',closedAt=now();
+      const total=orderTotal(o),paymentStatus=b.paymentStatus==='paid'?'paid':'pending',closedAt=now();
       Object.assign(o,{status:'Finalizada',paymentTerms:b.paymentTerms,paymentStatus,paymentDueDate:b.dueDate||'',receivedValue:Number(b.receivedValue||total),financialNotes:b.financialNotes||'',closedAt,updatedAt:closedAt});o.timeline=o.timeline||[];o.timeline.push({at:closedAt,label:paymentStatus==='paid'?'OS finalizada e recebida':'OS finalizada — recebimento pendente',user:user.name});
       let entry=db.finance.find(x=>x.orderId===o.id);const financeData={description:`Recebimento OS #${o.number}`,type:'Receita',category:'Ordem de Serviço',value:Number(b.receivedValue||total),date:closedAt.slice(0,10),dueDate:b.dueDate||closedAt.slice(0,10),status:paymentStatus,paymentTerms:b.paymentTerms,notes:b.financialNotes||'',orderId:o.id,updatedAt:closedAt};
       if(entry)Object.assign(entry,financeData);else{entry={...financeData,id:id('fin'),ownerId:o.ownerId,createdAt:closedAt};db.finance.unshift(entry)}audit(user,'finalizou OS',`#${o.number}`);saveDB(db);return json(res,200,{order:o,finance:entry});
     }
+    if(method==='POST'&&parts[2]&&parts[3]==='cancel'){
+      const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissao para cancelar esta OS.'});
+      const b=await body(req),reason=String(b.reason||'').trim();if(!reason)return json(res,400,{error:'Informe o motivo do cancelamento.'});
+      const cancelledAt=now();Object.assign(o,{status:'Cancelada',cancellationReason:reason,cancelledAt,cancelledBy:user.name,updatedAt:cancelledAt});o.timeline=o.timeline||[];o.timeline.push({at:cancelledAt,label:`OS cancelada: ${reason}`,user:user.name});
+      const financeIndex=db.finance.findIndex(x=>x.orderId===o.id&&x.status==='pending');if(financeIndex>=0)db.finance.splice(financeIndex,1);audit(user,'cancelou OS',`#${o.number}: ${reason}`);saveDB(db);return json(res,200,o);
+    }
     if(method==='GET'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);return o&&canAccess(user,o.ownerId,'orders','view',o.id)?json(res,200,o):json(res,404,{error:'OS não encontrada.'});}
-    if(method==='POST'){const b=await body(req);const allowed=['dia-15','dia-30','avista','pix','credito','debito'];const o={...b,id:id('os'),number:db.meta.osCounter++,ownerId:user.id,status:b.status||'Aberta',paymentTerms:allowed.includes(b.paymentTerms)?b.paymentTerms:'dia-15',services:[],parts:[],checklist:{},timeline:[{at:now(),label:'OS aberta',user:user.name}],createdAt:now(),updatedAt:now()};db.orders.unshift(o);audit(user,'abriu OS',`#${o.number}`);saveDB(db);return json(res,201,o);}
-    if(method==='PUT'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req);Object.assign(o,b,{id:o.id,number:o.number,ownerId:o.ownerId,updatedAt:now()});audit(user,'editou OS',`#${o.number}`);saveDB(db);return json(res,200,o);}
+    if(method==='POST'){const b=await body(req);const allowed=['dia-15','dia-30','avista','pix','credito','debito'];const o={...b,warrantyDays:Math.max(0,Number(b.warrantyDays||90)),id:id('os'),number:db.meta.osCounter++,ownerId:user.id,status:b.status||'Aberta',paymentTerms:allowed.includes(b.paymentTerms)?b.paymentTerms:'dia-15',services:[],parts:[],expenses:[],checklist:{},timeline:[{at:now(),label:'OS aberta',user:user.name}],createdAt:now(),updatedAt:now()};syncOrderClient(o);db.orders.unshift(o);audit(user,'abriu OS',`#${o.number}`);saveDB(db);return json(res,201,o);}
+    if(method==='PUT'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req),previousStatus=o.status,updatedAt=now();Object.assign(o,b,{id:o.id,number:o.number,ownerId:o.ownerId,warrantyDays:Math.max(0,Number(b.warrantyDays??o.warrantyDays??90)),updatedAt});if(b.status==='Entregue'&&previousStatus!=='Entregue')o.deliveredAt=updatedAt;o.expenses??=[];syncOrderClient(o);audit(user,'editou OS',`#${o.number}`);saveDB(db);return json(res,200,o);}
   }
 
   if(parts[1]==='agenda'){
@@ -123,7 +145,7 @@ async function api(req,res){
 
   if(['clients','stock','finance'].includes(parts[1])){
     const collection=parts[1];
-    if(method==='GET'&&!parts[2])return json(res,200,db[collection].filter(x=>canAccess(user,x.ownerId,collection)));
+    if(method==='GET'&&!parts[2]){if(collection==='clients'){db.vehicles.filter(v=>canAccess(user,v.ownerId,'vehicles')).forEach(v=>syncClientFromVehicle(v,user));saveDB(db)}return json(res,200,db[collection].filter(x=>canAccess(user,x.ownerId,collection)));}
     if(method==='GET'&&parts[2]){const item=db[collection].find(x=>x.id===parts[2]);return item&&canAccess(user,item.ownerId,collection)?json(res,200,item):json(res,404,{error:'Registro não encontrado.'});}
     if(method==='POST'){const b=await body(req);const item={...b,id:id(collection.slice(0,3)),ownerId:user.id,createdAt:now(),updatedAt:now()};db[collection].unshift(item);audit(user,`criou registro em ${collection}`,item.name||item.description||item.id);saveDB(db);return json(res,201,item);}
     if(method==='PUT'&&parts[2]){const item=db[collection].find(x=>x.id===parts[2]);if(!item||!canAccess(user,item.ownerId,collection,'edit'))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req);Object.assign(item,b,{id:item.id,ownerId:item.ownerId,updatedAt:now()});audit(user,`editou registro em ${collection}`,item.name||item.description||item.id);saveDB(db);return json(res,200,item);}
