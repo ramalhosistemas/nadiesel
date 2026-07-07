@@ -27,7 +27,7 @@
 @media(max-width:600px){
   .order-detail-head{display:grid;grid-template-columns:1fr}
   .order-detail-head .actions{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
-  .order-detail-head .actions .btn:not(.btn-primary){display:inline-flex}
+  .order-detail-head .actions .btn{display:inline-flex!important}
   .os-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;overflow:visible;border-bottom:0}
   .os-tabs .tab{white-space:normal;text-align:center;border:1px solid var(--line);border-radius:7px;padding:10px 6px}
   .os-tabs .tab.active{border-color:var(--yellow)}
