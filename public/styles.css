@@ -24,6 +24,19 @@
 @media(max-width:600px){.login-card{width:100%;min-height:auto;padding:28px 20px}.login-divider{margin:20px 0}.login-note{margin-top:26px}.input-icon input{height:54px}}
 .payment-card{margin-top:14px;padding:16px 20px;display:flex;justify-content:space-between;gap:24px;align-items:center;border-color:#8e7300;background:linear-gradient(100deg,rgba(255,196,0,.12),rgba(12,18,24,.96) 55%)}.payment-card h3{margin:5px 0;color:var(--yellow)}.payment-field{border:1px solid #6f5a00;border-radius:9px;padding:12px;background:rgba(255,196,0,.06)}
 @media(max-width:700px){.payment-card{align-items:flex-start;flex-direction:column}}
+@media(max-width:600px){
+  .order-detail-head{display:grid;grid-template-columns:1fr}
+  .order-detail-head .actions{width:100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .order-detail-head .actions .btn:not(.btn-primary){display:inline-flex}
+  .os-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;overflow:visible;border-bottom:0}
+  .os-tabs .tab{white-space:normal;text-align:center;border:1px solid var(--line);border-radius:7px;padding:10px 6px}
+  .os-tabs .tab.active{border-color:var(--yellow)}
+  .report-filter-grid{display:grid!important;grid-template-columns:1fr!important}
+  .report-filter-grid .field{display:flex!important;grid-column:1/-1!important}
+}
+.fleet-hidden{display:none!important}
+input[name="plate"]{text-transform:uppercase}
+.admin-users-list{margin-top:10px;border:1px solid var(--line);border-radius:8px;overflow:hidden}.admin-users-list small{display:block;margin-top:3px}
 .avatar{overflow:hidden}.avatar img{width:100%;height:100%;object-fit:cover;display:block}.profile-editor{display:flex;align-items:center;gap:18px;padding:14px 0 20px}.profile-avatar{width:92px;height:92px;flex:0 0 92px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:linear-gradient(135deg,var(--yellow),var(--orange));color:#181000;font-size:34px;font-weight:800;border:3px solid #dce2e6}.profile-avatar img{width:100%;height:100%;object-fit:cover}.profile-editor h2{margin:0 0 4px}.profile-editor p{margin:0 0 13px}
 @media(max-width:520px){.profile-editor{align-items:flex-start}.profile-avatar{width:72px;height:72px;flex-basis:72px}.profile-editor .actions{flex-direction:column}}
 .install-btn{margin-top:12px;border-color:#6b7580;background:rgba(11,17,23,.92)}.can-install .install-btn{border-color:var(--yellow);color:var(--yellow)}

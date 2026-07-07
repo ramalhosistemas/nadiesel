@@ -15,6 +15,7 @@ const MIME = {'.html':'text/html; charset=utf-8','.css':'text/css; charset=utf-8
 const id = p => `${p}_${crypto.randomBytes(7).toString('hex')}`;
 const now = () => new Date().toISOString();
 const orderNumber = value => String(Math.max(0, Number(value) || 0)).padStart(5, '0');
+const normalizePlate = value => String(value || '').trim().toUpperCase();
 const passwordHash = password => crypto.scryptSync(String(password), 'gl-electromechanic-v1', 32).toString('hex');
 const AUTH_SECRET=process.env.AUTH_SECRET||'na-diesel-auth-v2-2026';
 const createAuthToken=userId=>{const payload=Buffer.from(JSON.stringify({sub:userId,iat:Date.now(),nonce:crypto.randomBytes(12).toString('hex')})).toString('base64url'),signature=crypto.createHmac('sha256',AUTH_SECRET).update(payload).digest('base64url');return `${payload}.${signature}`};
@@ -41,6 +42,7 @@ function normalizeDB(value){
   normalized.meta=normalized.meta&&typeof normalized.meta==='object'?normalized.meta:{version:1,createdAt:now(),osCounter:1};
   normalized.meta.version??=1;normalized.meta.createdAt??=now();normalized.meta.osCounter=Number(normalized.meta.osCounter||1);
   normalized.users.forEach(user=>{user.role=user.role||'admin';user.active=user.active!==false;user.passkeys=Array.isArray(user.passkeys)?user.passkeys:[]});
+  normalized.vehicles.forEach(vehicle=>{vehicle.plate=normalizePlate(vehicle.plate)});
   normalized.orders.forEach(order=>{order.services=Array.isArray(order.services)?order.services:[];order.parts=Array.isArray(order.parts)?order.parts:[];order.expenses=Array.isArray(order.expenses)?order.expenses:[];order.timeline=Array.isArray(order.timeline)?order.timeline:[];order.checklist=order.checklist&&typeof order.checklist==='object'&&!Array.isArray(order.checklist)?order.checklist:{};if(!order.paymentTerms||order.paymentTerms==='15-30')order.paymentTerms='dia-30';if(order.paymentTerms==='dia-05')order.paymentTerms='dia-15'});
   return normalized;
 }
@@ -84,12 +86,12 @@ function syncOrderClient(order){
 async function api(req,res){
   const parts=routeParts(req.url); const method=req.method;
   if(method==='POST'&&parts[1]==='login'){
-    const b=await body(req);const u=db.users.find(x=>x.active&&(x.username.toLowerCase()===String(b.username||'').toLowerCase()||x.name.toLowerCase()===String(b.username||'').toLowerCase()));
+    const b=await body(req),username=String(b.username||'').trim().toLowerCase();const u=db.users.find(x=>x.active&&(x.username.toLowerCase()===username||x.name.toLowerCase()===username));
     if(!u||u.passwordHash!==passwordHash(b.password||''))return json(res,401,{error:'Usuário ou senha inválidos.'});
     const token=createAuthToken(u.id);audit(u,'login','session');saveDB(db);return json(res,200,{token,user:safeUser(u)});
   }
   if(method==='POST'&&parts[1]==='biometric'&&parts[2]==='login-options'){
-    const b=await body(req);const u=db.users.find(x=>x.active&&(x.username.toLowerCase()===String(b.username||'').toLowerCase()||x.name.toLowerCase()===String(b.username||'').toLowerCase()));
+    const b=await body(req),username=String(b.username||'').trim().toLowerCase();const u=db.users.find(x=>x.active&&(x.username.toLowerCase()===username||x.name.toLowerCase()===username));
     if(!u||!u.passkeys?.length)return json(res,404,{error:'Biometria ainda não cadastrada para este usuário.'});
     const rpId=String(req.headers.host||'127.0.0.1').split(':')[0];return json(res,200,{userId:u.id,challenge:newChallenge(u.id,'login'),rpId,allowCredentials:u.passkeys.map(k=>({id:k.credentialId,type:'public-key'}))});
   }
@@ -101,7 +103,9 @@ async function api(req,res){
   if(method==='POST'&&parts[1]==='logout'){for(const [t,uid]of Object.entries(db.sessions||{}))if(uid===user.id)delete db.sessions[t];saveDB(db);return json(res,200,{ok:true});}
   if(method==='GET'&&parts[1]==='me')return json(res,200,{user:safeUser(user)});
   if(method==='GET'&&parts[1]==='users')return json(res,200,db.users.map(safeUser));
+  if(parts[1]==='users'&&parts[2]&&parts[3]==='password'&&method==='PUT'){if(user.role!=='admin')return json(res,403,{error:'Somente o Administrador pode redefinir senhas.'});const target=db.users.find(item=>item.id===parts[2]);if(!target)return json(res,404,{error:'Usuário não encontrado.'});const b=await body(req),next=String(b.newPassword||'');if(next.length<6)return json(res,400,{error:'A nova senha deve ter pelo menos 6 caracteres.'});target.passwordHash=passwordHash(next);target.passkeys=[];audit(user,'redefiniu senha',target.name);saveDB(db);return json(res,200,{ok:true,message:`Senha de ${target.name} redefinida com sucesso.`});}
   if(parts[1]==='profile'&&method==='PUT'){const b=await body(req);if(typeof b.name==='string'&&b.name.trim())user.name=b.name.trim().slice(0,80);if(typeof b.avatar==='string'&&(b.avatar===''||b.avatar.startsWith('data:image/')))user.avatar=b.avatar;audit(user,b.avatar?'atualizou avatar':'removeu avatar','perfil');saveDB(db);return json(res,200,{user:safeUser(user)});}
+  if(parts[1]==='password'&&method==='PUT'){const b=await body(req),current=String(b.currentPassword||''),next=String(b.newPassword||'');if(user.passwordHash!==passwordHash(current))return json(res,400,{error:'A senha atual está incorreta.'});if(next.length<6)return json(res,400,{error:'A nova senha deve ter pelo menos 6 caracteres.'});if(next===current)return json(res,400,{error:'A nova senha deve ser diferente da senha atual.'});user.passwordHash=passwordHash(next);audit(user,'alterou senha','conta própria');saveDB(db);return json(res,200,{ok:true,message:'Senha alterada com sucesso.'});}
   if(method==='POST'&&parts[1]==='biometric'&&parts[2]==='register-options'){const rpId=String(req.headers.host||'127.0.0.1').split(':')[0];return json(res,200,{challenge:newChallenge(user.id,'register'),rp:{id:rpId,name:'N.A.Diesel Diagnósticos e Programação'},user:{id:b64url(user.id),name:user.username,displayName:user.name}});}
   if(method==='POST'&&parts[1]==='biometric'&&parts[2]==='register-complete'){
     const b=await body(req);let client;try{client=JSON.parse(fromB64url(b.clientDataJSON).toString('utf8'));}catch{return json(res,400,{error:'Resposta biométrica inválida.'});}let validOrigin=false;try{const origin=new URL(client.origin);validOrigin=(origin.protocol==='https:'||client.origin==='http://127.0.0.1:3015'||client.origin==='http://localhost:3015');}catch{}if(client.type!=='webauthn.create'||!consumeChallenge(client.challenge,user.id,'register')||!validOrigin)return json(res,400,{error:'Cadastro biométrico expirado ou inválido.'});if(!b.credentialId||!b.publicKey)return json(res,400,{error:'O dispositivo não forneceu uma chave biométrica compatível.'});user.passkeys??=[];user.passkeys=user.passkeys.filter(k=>k.credentialId!==b.credentialId);user.passkeys.push({credentialId:b.credentialId,publicKey:b.publicKey,name:b.name||'Dispositivo biométrico',createdAt:now()});audit(user,'cadastrou biometria',b.name||'dispositivo');saveDB(db);return json(res,201,{ok:true,count:user.passkeys.length});
@@ -125,9 +129,9 @@ async function api(req,res){
     if(method==='GET'&&!parts[2]){const vehicles=db.vehicles.filter(v=>canAccess(user,v.ownerId,'vehicles'));vehicles.forEach(v=>syncClientFromVehicle(v,user));saveDB(db);return json(res,200,vehicles);}
     if(method==='GET'&&parts[2]){const v=db.vehicles.find(x=>x.id===parts[2]);return v&&canAccess(user,v.ownerId,'vehicles')?json(res,200,v):json(res,404,{error:'Veículo não encontrado.'});}
     if(method==='POST'){
-      const b=await body(req);const v={...b,id:id('veh'),ownerId:user.id,photos:Array.isArray(b.photos)?b.photos.slice(0,8):[],active:b.active!==false,createdAt:now(),updatedAt:now()};syncClientFromVehicle(v,user);db.vehicles.unshift(v);audit(user,'criou veículo',v.plate||v.id);saveDB(db);return json(res,201,v);
+      const b=await body(req);const v={...b,plate:normalizePlate(b.plate),id:id('veh'),ownerId:user.id,photos:Array.isArray(b.photos)?b.photos.slice(0,8):[],active:b.active!==false,createdAt:now(),updatedAt:now()};syncClientFromVehicle(v,user);db.vehicles.unshift(v);audit(user,'criou veículo',v.plate||v.id);saveDB(db);return json(res,201,v);
     }
-    if(method==='PUT'&&parts[2]){const v=db.vehicles.find(x=>x.id===parts[2]);if(!v||!canAccess(user,v.ownerId,'vehicles','edit'))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req);Object.assign(v,b,{id:v.id,ownerId:v.ownerId,photos:Array.isArray(b.photos)?b.photos.slice(0,8):v.photos,updatedAt:now(),clientSyncDisabled:false});syncClientFromVehicle(v,user);db.orders.filter(o=>o.vehicleId===v.id).forEach(syncOrderClient);audit(user,'editou veículo',v.plate||v.id);saveDB(db);return json(res,200,v);}
+    if(method==='PUT'&&parts[2]){const v=db.vehicles.find(x=>x.id===parts[2]);if(!v||!canAccess(user,v.ownerId,'vehicles','edit'))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req);Object.assign(v,b,{id:v.id,ownerId:v.ownerId,plate:normalizePlate(b.plate??v.plate),photos:Array.isArray(b.photos)?b.photos.slice(0,8):v.photos,updatedAt:now(),clientSyncDisabled:false});syncClientFromVehicle(v,user);db.orders.filter(o=>o.vehicleId===v.id).forEach(syncOrderClient);audit(user,'editou veículo',v.plate||v.id);saveDB(db);return json(res,200,v);}
     if(method==='DELETE'&&parts[2]){const i=db.vehicles.findIndex(x=>x.id===parts[2]);if(i<0||!canAccess(user,db.vehicles[i].ownerId,'vehicles','edit'))return json(res,403,{error:'Sem permissão.'});const [v]=db.vehicles.splice(i,1);audit(user,'removeu veículo',v.plate||v.id);saveDB(db);return json(res,200,{ok:true});}
   }
 
@@ -135,7 +139,7 @@ async function api(req,res){
     if(method==='GET'&&!parts[2])return json(res,200,db.orders.filter(o=>canAccess(user,o.ownerId,'orders','view',o.id)));
     if(method==='POST'&&parts[2]&&parts[3]==='close'){
       const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissão para finalizar esta OS.'});
-      const b=await body(req),allowed=['dia-15','dia-30','avista','pix','credito','debito'];if(!allowed.includes(b.paymentTerms))return json(res,400,{error:'Prazo ou forma de pagamento inválido.'});
+      const b=await body(req),allowed=['dia-15','dia-30','avista','pix','credito','debito','indeterminado'];if(!allowed.includes(b.paymentTerms))return json(res,400,{error:'Prazo ou forma de pagamento inválido.'});
       const total=orderTotal(o),paymentStatus=b.paymentStatus==='paid'?'paid':'pending',closedAt=now();
       Object.assign(o,{status:'Finalizada',paymentTerms:b.paymentTerms,paymentStatus,paymentDueDate:b.dueDate||'',receivedValue:Number(b.receivedValue||total),financialNotes:b.financialNotes||'',closedAt,updatedAt:closedAt});o.timeline=o.timeline||[];o.timeline.push({at:closedAt,label:paymentStatus==='paid'?'OS finalizada e recebida':'OS finalizada — recebimento pendente',user:user.name});
       let entry=db.finance.find(x=>x.orderId===o.id);const financeData={description:`Recebimento OS #${orderNumber(o.number)}`,type:'Receita',category:'Ordem de Serviço',value:Number(b.receivedValue||total),date:closedAt.slice(0,10),dueDate:b.dueDate||closedAt.slice(0,10),status:paymentStatus,paymentTerms:b.paymentTerms,notes:b.financialNotes||'',orderId:o.id,updatedAt:closedAt};
@@ -148,7 +152,7 @@ async function api(req,res){
       const financeIndex=db.finance.findIndex(x=>x.orderId===o.id&&x.status==='pending');if(financeIndex>=0)db.finance.splice(financeIndex,1);audit(user,'cancelou OS',`#${orderNumber(o.number)}: ${reason}`);saveDB(db);return json(res,200,o);
     }
     if(method==='GET'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);return o&&canAccess(user,o.ownerId,'orders','view',o.id)?json(res,200,o):json(res,404,{error:'OS não encontrada.'});}
-    if(method==='POST'){const b=await body(req);const allowed=['dia-15','dia-30','avista','pix','credito','debito'];const o={...b,warrantyDays:Math.max(0,Number(b.warrantyDays||90)),id:id('os'),number:db.meta.osCounter++,ownerId:user.id,status:b.status||'Aberta',paymentTerms:allowed.includes(b.paymentTerms)?b.paymentTerms:'dia-15',services:[],parts:[],expenses:[],checklist:{},timeline:[{at:now(),label:'OS aberta',user:user.name}],createdAt:now(),updatedAt:now()};syncOrderClient(o);db.orders.unshift(o);audit(user,'abriu OS',`#${orderNumber(o.number)}`);saveDB(db);return json(res,201,o);}
+    if(method==='POST'){const b=await body(req);const allowed=['dia-15','dia-30','avista','pix','credito','debito','indeterminado'];const o={...b,warrantyDays:Math.max(0,Number(b.warrantyDays||90)),id:id('os'),number:db.meta.osCounter++,ownerId:user.id,status:b.status||'Aberta',paymentTerms:allowed.includes(b.paymentTerms)?b.paymentTerms:'dia-15',services:[],parts:[],expenses:[],checklist:{},timeline:[{at:now(),label:'OS aberta',user:user.name}],createdAt:now(),updatedAt:now()};syncOrderClient(o);db.orders.unshift(o);audit(user,'abriu OS',`#${orderNumber(o.number)}`);saveDB(db);return json(res,201,o);}
     if(method==='PUT'&&parts[2]){const o=db.orders.find(x=>x.id===parts[2]);if(!o||!canAccess(user,o.ownerId,'orders','edit',o.id))return json(res,403,{error:'Sem permissão para editar.'});const b=await body(req),previousStatus=o.status,updatedAt=now();Object.assign(o,b,{id:o.id,number:o.number,ownerId:o.ownerId,warrantyDays:Math.max(0,Number(b.warrantyDays??o.warrantyDays??90)),updatedAt});if(b.status==='Entregue'&&previousStatus!=='Entregue')o.deliveredAt=updatedAt;o.expenses??=[];syncOrderClient(o);audit(user,'editou OS',`#${orderNumber(o.number)}`);saveDB(db);return json(res,200,o);}
   }
 
