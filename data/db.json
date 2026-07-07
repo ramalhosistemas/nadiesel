@@ -1,0 +1,743 @@
+{
+  "meta": {
+    "version": 1,
+    "createdAt": "2026-07-06T23:35:21.853Z",
+    "osCounter": 4
+  },
+  "users": [
+    {
+      "id": "usr_1",
+      "name": "Admin",
+      "username": "admin",
+      "role": "admin",
+      "passwordHash": "fbf15d5dac1851855282b40a60699c6aa18f6dde52d191c5ff3519dc23cc7d3d",
+      "active": true,
+      "createdAt": "2026-07-06T23:35:20.951Z",
+      "passkeys": []
+    },
+    {
+      "id": "usr_2",
+      "name": "Gabriel",
+      "username": "gabriel",
+      "role": "admin",
+      "passwordHash": "84cff9e69a9bb147b9034df36594154edaf1533cb64cd20dcf7f264b85598749",
+      "active": true,
+      "createdAt": "2026-07-06T23:35:21.259Z",
+      "passkeys": []
+    },
+    {
+      "id": "usr_3",
+      "name": "Leonardo",
+      "username": "leonardo",
+      "role": "admin",
+      "passwordHash": "d2309d55e48ecef19bb4d906fcdf1dfa41fcd64ee8e2f7c7c5846f96138480e0",
+      "active": true,
+      "createdAt": "2026-07-06T23:35:21.557Z",
+      "passkeys": []
+    },
+    {
+      "id": "usr_4",
+      "name": "Naldo",
+      "username": "naldo",
+      "role": "admin",
+      "passwordHash": "d2309d55e48ecef19bb4d906fcdf1dfa41fcd64ee8e2f7c7c5846f96138480e0",
+      "active": true,
+      "createdAt": "2026-07-06T23:35:21.853Z",
+      "passkeys": []
+    }
+  ],
+  "sessions": {},
+  "biometricChallenges": {},
+  "shares": [],
+  "vehicles": [
+    {
+      "plate": "FXP4J43",
+      "renavam": "",
+      "type": "Cavalo Mecânico",
+      "category": "Frota",
+      "brand": "Volks",
+      "model": "19360",
+      "year": "585555",
+      "modelYear": "",
+      "color": "",
+      "fuel": "",
+      "mileage": "",
+      "hours": "",
+      "chassis": "455455",
+      "engine": "",
+      "doors": "",
+      "traction": "",
+      "company": "Cbm",
+      "document": "",
+      "contact": "",
+      "phone": "",
+      "email": "",
+      "city": "",
+      "state": "",
+      "enginePower": "",
+      "engineSerial": "",
+      "gearbox": "",
+      "differential": "",
+      "axles": "",
+      "weight": "",
+      "tireSize": "",
+      "battery": "",
+      "alternator": "",
+      "starter": "",
+      "turbo": "",
+      "injection": "",
+      "brakes": "",
+      "suspension": "",
+      "airConditioning": "",
+      "tachograph": "",
+      "notes": "",
+      "active": true,
+      "licenseExpiry": "",
+      "insuranceExpiry": "",
+      "documentNotes": "",
+      "photos": [],
+      "id": "veh_bf48994b9698c8",
+      "ownerId": "usr_2",
+      "createdAt": "2026-07-07T00:28:05.746Z",
+      "updatedAt": "2026-07-07T01:08:13.323Z",
+      "clientId": "cli_2815113a1be2fe",
+      "clientName": "Cbm",
+      "clientSyncDisabled": false
+    },
+    {
+      "plate": "DEI2A66",
+      "renavam": "",
+      "type": "Cavalo Mecânico",
+      "category": "Particular",
+      "brand": "Volws ",
+      "model": "19360",
+      "year": "2022",
+      "modelYear": "",
+      "color": "",
+      "fuel": "",
+      "mileage": "",
+      "hours": "",
+      "chassis": "1373883",
+      "engine": "",
+      "doors": "",
+      "traction": "",
+      "company": "Print ",
+      "document": "",
+      "contact": "",
+      "phone": "",
+      "email": "",
+      "city": "",
+      "state": "",
+      "enginePower": "",
+      "engineSerial": "",
+      "gearbox": "",
+      "differential": "",
+      "axles": "",
+      "weight": "",
+      "tireSize": "",
+      "battery": "",
+      "alternator": "",
+      "starter": "",
+      "turbo": "",
+      "injection": "",
+      "brakes": "",
+      "suspension": "",
+      "airConditioning": "",
+      "tachograph": "",
+      "notes": "",
+      "active": true,
+      "licenseExpiry": "",
+      "insuranceExpiry": "",
+      "documentNotes": "",
+      "photos": [],
+      "id": "veh_c83dae93807e4e",
+      "ownerId": "usr_2",
+      "createdAt": "2026-07-07T00:16:58.407Z",
+      "updatedAt": "2026-07-07T00:16:58.407Z",
+      "clientId": "cli_db51e3e10a4f74",
+      "clientName": "Print"
+    }
+  ],
+  "clients": [
+    {
+      "name": "Cbm",
+      "document": "",
+      "contact": "",
+      "phone": "",
+      "email": "",
+      "address": "",
+      "id": "cli_2815113a1be2fe",
+      "ownerId": "usr_2",
+      "createdAt": "2026-07-07T00:26:56.612Z",
+      "updatedAt": "2026-07-07T01:58:11.328Z",
+      "city": "",
+      "state": ""
+    },
+    {
+      "name": "Print",
+      "document": "",
+      "contact": "",
+      "phone": "",
+      "email": "",
+      "city": "",
+      "state": "",
+      "updatedAt": "2026-07-07T01:58:11.329Z",
+      "id": "cli_db51e3e10a4f74",
+      "ownerId": "usr_2",
+      "createdAt": "2026-07-07T00:16:58.407Z"
+    }
+  ],
+  "stock": [],
+  "finance": [],
+  "orders": [
+    {
+      "clientId": "cli_db51e3e10a4f74",
+      "vehicleId": "veh_c83dae93807e4e",
+      "priority": "Média",
+      "category": "Preventiva",
+      "dueDate": "2026-07-07T03:25",
+      "mechanic": "Gabriel",
+      "warrantyDays": 90,
+      "paymentTerms": "indeterminado",
+      "problem": "Jggj",
+      "id": "os_db0ed5ccdadf9e",
+      "number": 2,
+      "ownerId": "usr_2",
+      "status": "Aberta",
+      "services": [],
+      "parts": [],
+      "expenses": [],
+      "checklist": {},
+      "timeline": [
+        {
+          "at": "2026-07-07T00:26:18.793Z",
+          "label": "OS aberta",
+          "user": "Gabriel"
+        }
+      ],
+      "createdAt": "2026-07-07T00:26:18.793Z",
+      "updatedAt": "2026-07-07T01:08:03.696Z",
+      "clientName": "Print"
+    },
+    {
+      "clientId": "cli_db51e3e10a4f74",
+      "vehicleId": "veh_c83dae93807e4e",
+      "priority": "Média",
+      "category": "",
+      "dueDate": "",
+      "mechanic": "Gabriel",
+      "warrantyDays": 90,
+      "paymentTerms": "dia-15",
+      "problem": "Rndidjd",
+      "id": "os_5d261e86d4f936",
+      "number": 1,
+      "ownerId": "usr_2",
+      "status": "Aberta",
+      "services": [],
+      "parts": [],
+      "expenses": [],
+      "checklist": {
+        "eletrica_0_0": {
+          "state": "ok",
+          "at": "2026-07-07T00:17:30.347Z",
+          "user": "Gabriel"
+        },
+        "eletrica_0_1": {
+          "state": "ok",
+          "at": "2026-07-07T00:17:35.185Z",
+          "user": "Gabriel"
+        },
+        "eletrica_0_2": {
+          "state": "ok",
+          "at": "2026-07-07T00:17:40.187Z",
+          "user": "Gabriel"
+        },
+        "eletrica_0_3": {
+          "state": "ok",
+          "at": "2026-07-07T00:23:09.057Z",
+          "user": "Gabriel"
+        },
+        "eletrica_0_4": {
+          "state": "atencao",
+          "at": "2026-07-07T00:23:24.315Z",
+          "user": "Gabriel"
+        },
+        "eletrica_0_5": {
+          "state": "critico",
+          "at": "2026-07-07T00:23:43.153Z",
+          "user": "Gabriel"
+        }
+      },
+      "timeline": [
+        {
+          "at": "2026-07-07T00:17:20.054Z",
+          "label": "OS aberta",
+          "user": "Gabriel"
+        }
+      ],
+      "createdAt": "2026-07-07T00:17:20.054Z",
+      "updatedAt": "2026-07-07T00:23:43.182Z",
+      "clientName": "Print"
+    }
+  ],
+  "notifications": [],
+  "audit": [
+    {
+      "id": "aud_615243569348a1",
+      "userId": "usr_1",
+      "user": "Admin",
+      "action": "excluiu OS",
+      "target": "#00003",
+      "at": "2026-07-07T01:55:17.757Z"
+    },
+    {
+      "id": "aud_a42bd1a9069211",
+      "userId": "usr_1",
+      "user": "Admin",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T01:23:12.280Z"
+    },
+    {
+      "id": "aud_caa03bc6e8b1ed",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T01:23:00.055Z"
+    },
+    {
+      "id": "aud_74f4ca325d7edc",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T01:22:32.992Z"
+    },
+    {
+      "id": "aud_b3783739aae60f",
+      "userId": "usr_1",
+      "user": "Admin",
+      "action": "redefiniu senha",
+      "target": "Gabriel",
+      "at": "2026-07-07T01:22:22.924Z"
+    },
+    {
+      "id": "aud_072f660b7cb7b4",
+      "userId": "usr_1",
+      "user": "Admin",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T01:18:51.278Z"
+    },
+    {
+      "id": "aud_9cf72c8649d284",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "alterou senha",
+      "target": "conta própria",
+      "at": "2026-07-07T01:16:53.571Z"
+    },
+    {
+      "id": "aud_1e5ebcf9640d3e",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T01:16:24.639Z"
+    },
+    {
+      "id": "aud_d68413ecd4f4dc",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T01:13:35.254Z"
+    },
+    {
+      "id": "aud_d21d6cc99ac935",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "editou OS",
+      "target": "#00003",
+      "at": "2026-07-07T01:09:16.731Z"
+    },
+    {
+      "id": "aud_60d882339d29ad",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "editou OS",
+      "target": "#00003",
+      "at": "2026-07-07T01:09:15.331Z"
+    },
+    {
+      "id": "aud_b7050532655d65",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "editou OS",
+      "target": "#00003",
+      "at": "2026-07-07T01:09:13.547Z"
+    },
+    {
+      "id": "aud_29243c8be9826a",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "editou OS",
+      "target": "#00003",
+      "at": "2026-07-07T01:09:12.506Z"
+    },
+    {
+      "id": "aud_94225e37adcd23",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "editou OS",
+      "target": "#00003",
+      "at": "2026-07-07T01:09:11.787Z"
+    },
+    {
+      "id": "aud_8bc0fd0bbd31c9",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "abriu OS",
+      "target": "#00003",
+      "at": "2026-07-07T01:08:53.632Z"
+    },
+    {
+      "id": "aud_910e78ed63d493",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "editou veículo",
+      "target": "Fxp4j43",
+      "at": "2026-07-07T01:08:13.323Z"
+    },
+    {
+      "id": "aud_0189aec67ed7e1",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "editou OS",
+      "target": "#00002",
+      "at": "2026-07-07T01:08:03.696Z"
+    },
+    {
+      "id": "aud_811fac98ed2b9c",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "editou OS",
+      "target": "#00002",
+      "at": "2026-07-07T01:07:46.208Z"
+    },
+    {
+      "id": "aud_5f5faf3955ca1f",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T01:06:30.056Z"
+    },
+    {
+      "id": "aud_e79b91af116d1f",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T01:06:11.649Z"
+    },
+    {
+      "id": "aud_f53759b982df10",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "restaurou backup",
+      "target": "2026-07-07T01:05:11.029Z",
+      "at": "2026-07-07T01:05:19.266Z"
+    },
+    {
+      "id": "aud_109d2343366b96",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "gerou backup",
+      "target": "banco completo",
+      "at": "2026-07-07T01:05:11.029Z"
+    },
+    {
+      "id": "aud_866be58e34d22d",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "criou veículo",
+      "target": "Fxp4j43",
+      "at": "2026-07-07T00:28:05.746Z"
+    },
+    {
+      "id": "aud_9c40cb8bd9910a",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "criou registro em clients",
+      "target": "Cbm",
+      "at": "2026-07-07T00:26:56.612Z"
+    },
+    {
+      "id": "aud_f608fa07a9eaeb",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "abriu OS",
+      "target": "#00002",
+      "at": "2026-07-07T00:26:18.793Z"
+    },
+    {
+      "id": "aud_59dde42f8b2290",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "editou OS",
+      "target": "#00001",
+      "at": "2026-07-07T00:23:43.182Z"
+    },
+    {
+      "id": "aud_2f89bd920d962f",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "editou OS",
+      "target": "#00001",
+      "at": "2026-07-07T00:23:24.361Z"
+    },
+    {
+      "id": "aud_d2690183c953c9",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "editou OS",
+      "target": "#00001",
+      "at": "2026-07-07T00:23:09.147Z"
+    },
+    {
+      "id": "aud_84cd48b5dfc9dc",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:19:16.554Z"
+    },
+    {
+      "id": "aud_bd42c1d464bbb0",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "editou OS",
+      "target": "#00001",
+      "at": "2026-07-07T00:17:40.970Z"
+    },
+    {
+      "id": "aud_ddc5643b311982",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "editou OS",
+      "target": "#00001",
+      "at": "2026-07-07T00:17:35.971Z"
+    },
+    {
+      "id": "aud_bb31970a4630ca",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "editou OS",
+      "target": "#00001",
+      "at": "2026-07-07T00:17:31.128Z"
+    },
+    {
+      "id": "aud_018870056e05a3",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "abriu OS",
+      "target": "#00001",
+      "at": "2026-07-07T00:17:20.054Z"
+    },
+    {
+      "id": "aud_f2e121101c4a6b",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "criou veículo",
+      "target": "Dei2a66",
+      "at": "2026-07-07T00:16:58.407Z"
+    },
+    {
+      "id": "aud_92f5eba5985db2",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login biométrico",
+      "target": "Android",
+      "at": "2026-07-07T00:11:46.259Z"
+    },
+    {
+      "id": "aud_5e17e25d932b3b",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "cadastrou biometria",
+      "target": "Android",
+      "at": "2026-07-07T00:11:29.355Z"
+    },
+    {
+      "id": "aud_281a97ed081054",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:10:55.853Z"
+    },
+    {
+      "id": "aud_18f7968f5ef84f",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:10:27.952Z"
+    },
+    {
+      "id": "aud_fea14c99cdcf2c",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:09:51.749Z"
+    },
+    {
+      "id": "aud_e63ca3486cf27b",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:09:15.154Z"
+    },
+    {
+      "id": "aud_ed790db3ce543c",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:09:01.052Z"
+    },
+    {
+      "id": "aud_e530d983a7cc3f",
+      "userId": "usr_4",
+      "user": "Naldo",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:08:39.755Z"
+    },
+    {
+      "id": "aud_c5b1fa82a863c1",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:08:20.758Z"
+    },
+    {
+      "id": "aud_c68ddc68a21388",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:08:11.853Z"
+    },
+    {
+      "id": "aud_2018c0deb746ea",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:07:02.749Z"
+    },
+    {
+      "id": "aud_2e9c41c1b00f01",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:06:17.452Z"
+    },
+    {
+      "id": "aud_6a56abea2c7e79",
+      "userId": "usr_3",
+      "user": "Leonardo",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:05:36.655Z"
+    },
+    {
+      "id": "aud_bf697b6cddb263",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-07T00:02:42.853Z"
+    },
+    {
+      "id": "aud_b0bad2ae55e3c6",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-06T23:58:51.056Z"
+    },
+    {
+      "id": "aud_2d70c205215167",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-06T23:51:54.453Z"
+    },
+    {
+      "id": "aud_7baa3bf66c32e6",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-06T23:48:48.359Z"
+    },
+    {
+      "id": "aud_7e01dc696b8452",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-06T23:48:34.053Z"
+    },
+    {
+      "id": "aud_bb70774462d1a1",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-06T23:46:56.353Z"
+    },
+    {
+      "id": "aud_39e719bdc7f0ab",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-06T23:44:10.254Z"
+    },
+    {
+      "id": "aud_94a5188201a743",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-06T23:42:46.553Z"
+    },
+    {
+      "id": "aud_f31755287af2b3",
+      "userId": "usr_2",
+      "user": "Gabriel",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-06T23:41:30.354Z"
+    },
+    {
+      "id": "aud_caff8d608d7702",
+      "userId": "usr_1",
+      "user": "Admin",
+      "action": "login",
+      "target": "session",
+      "at": "2026-07-06T23:39:03.658Z"
+    }
+  ],
+  "agenda": []
+}

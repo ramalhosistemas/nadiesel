@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GL Electromechanic — Gestão de Oficina</title>
+<style>
+:root{
+  --bg: #0a0b0f;
+  --bg-alt: #111319;
+  --panel: #15171f;
+  --panel-2: #1a1d26;
+  --border: rgba(255,255,255,0.08);
+  --border-2: rgba(255,255,255,0.14);
+  --text: #eef0f4;
+  --text-dim: #9aa0ad;
+  --text-mute: #666c79;
+  --yellow: #f5b300;
+  --yellow-2: #ffcf40;
+  --orange: #ff7a30;
+  --blue: #3aa0ff;
+  --green: #34d17a;
+  --red: #ff5468;
+  --purple: #b083ff;
+  --radius: 12px;
+  --radius-sm: 8px;
+  font-size: 15px;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', Inter, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#2a2d38;border-radius:8px;}
+::-webkit-scrollbar-thumb:hover{background:#3a3e4c;}
+
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;}
+
+/* ===== Layout ===== */
+.app{display:flex; min-height:100vh;}
+
+/* Sidebar */
+.sidebar{
+  width: 248px; flex-shrink:0;
+  background: #0c0d12;
+  border-right: 1px solid var(--border);
+  display:flex; flex-direction:column;
+  position: sticky; top:0; height:100vh;
+}
+.brand{
+  padding: 20px 18px 14px;
+  border-bottom: 1px solid var(--border);
+  display:flex; align-items:center; gap:10px;
+}
+.brand .bolt{
+  width:34px;height:34px; flex-shrink:0;
+}
+.brand-text{line-height:1.15;}
+.brand-name{
+  font-weight:800; font-size:19px; letter-spacing:0.5px;
+  background: linear-gradient(90deg, var(--yellow-2), var(--orange));
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+}
+.brand-sub{
+  font-size:9.5px; letter-spacing:1.4px; color:var(--text-mute); font-weight:600;
+  text-transform:uppercase; margin-top:2px;
+}
+.nav{ flex:1; overflow-y:auto; padding: 10px 10px; display:flex; flex-direction:column; gap:2px;}
+.nav-item{
+  display:flex; align-items:center; gap:11px;
+  padding: 10px 12px; border-radius: var(--radius-sm);
+  color: var(--text-dim); font-size:13.6px; font-weight:600;
+  cursor:pointer; border-left:3px solid transparent; transition: all .15s ease;
+}
+.nav-item svg{width:17px;height:17px; flex-shrink:0; opacity:.85;}
+.nav-item:hover{ background: var(--panel); color: var(--text);}
+.nav-item.active{
+  background: linear-gradient(90deg, rgba(245,179,0,0.14), rgba(245,179,0,0.02));
+  color: var(--yellow-2); border-left-color: var(--yellow);
+}
+.sidebar-footer{
+  padding: 12px 18px 16px; border-top:1px solid var(--border);
+  font-size:10.5px; color:var(--text-mute); display:flex; justify-content:space-between; align-items:center;
+}
+.dot-online{width:7px;height:7px;border-radius:50%;background:var(--green); display:inline-block; margin-right:5px; box-shadow:0 0 6px var(--green);}
+
+/* Main column */
+.main{flex:1; min-width:0; display:flex; flex-direction:column;}
+.topbar{
+  height:66px; flex-shrink:0;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:16px;
+  padding: 0 24px; background: rgba(10,11,15,0.7); backdrop-filter: blur(6px);
+  position: sticky; top:0; z-index:20;
+}
+.breadcrumb{font-size:13px; color:var(--text-dim); display:flex; align-items:center; gap:6px; white-space:nowrap;}
+.breadcrumb b{color:var(--text); font-weight:700;}
+.search-box{
+  flex:1; max-width:420px; position:relative;
+}
+.search-box input{
+  width:100%; background: var(--panel); border:1px solid var(--border);
+  border-radius: 20px; padding: 9px 16px 9px 36px; color:var(--text); font-size:13px; outline:none;
+}
+.search-box input:focus{border-color: var(--border-2);}
+.search-box svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px;height:15px; opacity:.5;}
+.topbar-spacer{flex:1;}
+.icon-btn{
+  width:36px;height:36px; border-radius:50%; background:var(--panel); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; color:var(--text-dim);
+}
+.icon-btn svg{width:16px;height:16px;}
+.icon-btn:hover{color:var(--text); border-color:var(--border-2);}
+.badge-count{
+  position:absolute; top:-4px; right:-4px; background:var(--orange); color:#1a0f00; font-size:9.5px; font-weight:800;
+  width:16px;height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+}
+.user-chip{display:flex; align-items:center; gap:9px; cursor:pointer; padding:4px 6px 4px 4px; border-radius:20px;}
+.user-chip:hover{background:var(--panel);}
+.avatar{width:34px;height:34px;border-radius:50%; background:linear-gradient(135deg,var(--yellow),var(--orange)); display:flex;align-items:center;justify-content:center; font-weight:800; color:#1a0f00; font-size:13px;}
+.user-meta{line-height:1.2;}
+.user-name{font-size:12.5px; font-weight:700;}
+.user-role{font-size:10.5px; color:var(--text-mute);}
+.btn-add{
+  width:36px;height:36px;border-radius:50%; background:linear-gradient(135deg,var(--yellow-2),var(--yellow));
+  color:#1a0f00; border:none; font-size:19px; font-weight:700; cursor:pointer; display:flex;align-items:center;justify-content:center;
+}
+.btn-add:hover{filter:brightness(1.08);}
+
+.content{padding:22px 24px 60px; flex:1; overflow-x:hidden;}
+.page-title{font-size:22px; font-weight:800; margin:0 0 2px;}
+.page-sub{font-size:13px; color:var(--text-dim); margin:0 0 20px;}
+
+/* Buttons general */
+.btn{
+  border:1px solid var(--border-2); background: var(--panel); color:var(--text);
+  padding: 9px 16px; border-radius: var(--radius-sm); font-size:12.8px; font-weight:700; cursor:pointer;
+  display:inline-flex; align-items:center; gap:7px;
+}
+.btn:hover{border-color:#484d5c;}
+.btn-primary{
+  background: linear-gradient(135deg,var(--yellow-2),var(--yellow)); color:#1a0f00; border:none;
+}
+.btn-primary:hover{filter:brightness(1.06);}
+.btn-ghost{background:transparent; border:1px solid var(--border);}
+.btn-sm{padding:6px 11px; font-size:11.5px;}
+.btn-danger{background:rgba(255,84,104,.12); color:var(--red); border:1px solid rgba(255,84,104,.3);}
+
+/* Cards / grid */
+.grid{display:grid; gap:16px;}
+.stat-row{grid-template-columns: repeat(7,minmax(0,1fr)); margin-bottom:18px;}
+@media (max-width:1400px){.stat-row{grid-template-columns:repeat(4,1fr);}}
+@media (max-width:820px){.stat-row{grid-template-columns:repeat(2,1fr);}}
+.stat-card{
+  background:var(--panel); border:1px solid var(--border); border-radius: var(--radius);
+  padding:14px 14px; display:flex; flex-direction:column; gap:8px; cursor:default;
+}
+.stat-top{display:flex; align-items:center; gap:10px;}
+.stat-icon{width:34px;height:34px;border-radius:9px; display:flex;align-items:center;justify-content:center; flex-shrink:0;}
+.stat-icon svg{width:17px;height:17px;}
+.stat-value{font-size:22px; font-weight:800;}
+.stat-label{font-size:11.5px; color:var(--text-dim); font-weight:600;}
+.stat-delta{font-size:10.5px; font-weight:700;}
+.stat-delta.up{color:var(--green);}
+.stat-delta.down{color:var(--red);}
+
+.panel{
+  background: var(--panel); border:1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 16px;
+}
+.panel-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
+.panel-title{font-size:14.5px; font-weight:800;}
+.panel-link{font-size:12px; color:var(--yellow-2); font-weight:700; cursor:pointer;}
+.panel-link:hover{text-decoration:underline;}
+
+.dash-grid{grid-template-columns: 1.3fr 1fr 1fr;}
+@media (max-width:1200px){.dash-grid{grid-template-columns:1fr;}}
+.dash-grid2{grid-template-columns: 1fr 1fr 1fr; margin-top:16px;}
+@media (max-width:1200px){.dash-grid2{grid-template-columns:1fr;}}
+
+table{width:100%; border-collapse:collapse; font-size:12.6px;}
+th{
+  text-align:left; color:var(--text-mute); font-size:10.6px; text-transform:uppercase; letter-spacing:.5px;
+  font-weight:700; padding:8px 8px; border-bottom:1px solid var(--border);
+}
+td{padding:10px 8px; border-bottom:1px solid var(--border); vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr.clickable{cursor:pointer;}
+tr.clickable:hover{background:var(--panel-2);}
+
+.tag{
+  display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:20px; font-size:10.8px; font-weight:800;
+}
+.tag-blue{background:rgba(58,160,255,.14); color:var(--blue);}
+.tag-yellow{background:rgba(245,179,0,.14); color:var(--yellow-2);}
+.tag-green{background:rgba(52,209,122,.14); color:var(--green);}
+.tag-red{background:rgba(255,84,104,.14); color:var(--red);}
+.tag-purple{background:rgba(176,131,255,.14); color:var(--purple);}
+.tag-orange{background:rgba(255,122,48,.14); color:var(--orange);}
+.tag-gray{background:rgba(255,255,255,.07); color:var(--text-dim);}
+
+.list-row{display:flex; align-items:center; justify-content:space-between; padding:9px 4px; border-bottom:1px solid var(--border); font-size:12.6px;}
+.list-row:last-child{border-bottom:none;}
+.list-row .l-main{font-weight:700;}
+.list-row .l-sub{color:var(--text-mute); font-size:11px;}
+
+/* Alerts */
+.alert-row{display:flex; align-items:flex-start; gap:9px; padding:9px 2px; border-bottom:1px solid var(--border); font-size:12.4px;}
+.alert-row:last-child{border-bottom:none;}
+.alert-ico{width:26px;height:26px;border-radius:7px; flex-shrink:0; display:flex;align-items:center;justify-content:center;}
+
+/* AI box */
+.ai-box{border:1px solid rgba(245,179,0,.25); background: linear-gradient(160deg, rgba(245,179,0,.07), transparent 60%);}
+.ai-msg{background:var(--panel-2); border-radius:12px; padding:12px; font-size:12.6px; line-height:1.65;}
+.ai-msg ul{margin:6px 0 0; padding-left:18px;}
+
+/* Chart (simple svg line/bar) */
+.chart-wrap{width:100%; height:190px;}
+
+/* ===== Forms ===== */
+.form-tabs{display:flex; gap:4px; border-bottom:1px solid var(--border); margin-bottom:18px; overflow-x:auto;}
+.form-tab{padding:10px 16px; font-size:13px; font-weight:700; color:var(--text-dim); cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap;}
+.form-tab.active{color:var(--yellow-2); border-bottom-color:var(--yellow);}
+.form-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px 16px;}
+@media (max-width:1100px){.form-grid{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:600px){.form-grid{grid-template-columns:1fr;}}
+.field{display:flex; flex-direction:column; gap:6px;}
+.field label{font-size:11.5px; font-weight:700; color:var(--text-dim);}
+.field label .req{color:var(--red);}
+.field input, .field select, .field textarea{
+  background:var(--bg-alt); border:1px solid var(--border-2); border-radius:var(--radius-sm);
+  padding:9px 11px; color:var(--text); font-size:13px; outline:none; font-family:inherit; width:100%;
+}
+.field input:focus, .field select:focus, .field textarea:focus{border-color: var(--yellow);}
+.field-full{grid-column: 1/-1;}
+.section-h{font-size:13.5px; font-weight:800; margin:22px 0 12px; padding-top:14px; border-top:1px solid var(--border);}
+.section-h:first-child{margin-top:0; padding-top:0; border-top:none;}
+
+.form-layout{display:grid; grid-template-columns: 1fr 300px; gap:18px;}
+@media (max-width:1100px){.form-layout{grid-template-columns:1fr;}}
+.photo-box{
+  width:100%; aspect-ratio:16/10; border-radius:var(--radius); background:var(--bg-alt); border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center; overflow:hidden; color:var(--text-mute); font-size:12px; margin-bottom:10px;
+}
+.photo-thumbs{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+.photo-thumb{aspect-ratio:1; border-radius:8px; background:var(--bg-alt); border:1px dashed var(--border-2); display:flex;align-items:center;justify-content:center; color:var(--text-mute); font-size:10px;}
+
+.switch{display:flex; align-items:center; gap:10px;}
+.switch input{display:none;}
+.switch-track{width:42px; height:24px; background:#2a2d38; border-radius:20px; position:relative; cursor:pointer; transition:.2s;}
+.switch-track::after{content:''; position:absolute; width:18px;height:18px; border-radius:50%; background:#888; top:3px; left:3px; transition:.2s;}
+.switch input:checked + .switch-track{background: var(--yellow);}
+.switch input:checked + .switch-track::after{left:21px; background:#1a0f00;}
+
+/* ===== Kanban / Boxes ===== */
+.box-grid{display:grid; grid-template-columns:repeat(5,1fr); gap:12px;}
+@media (max-width:1200px){.box-grid{grid-template-columns:repeat(2,1fr);}}
+.box-card{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:14px;}
+.box-name{font-size:12.5px; font-weight:800; margin-bottom:8px; display:flex; align-items:center; gap:7px;}
+.box-os{font-size:12px; color:var(--text-dim); margin-bottom:4px;}
+
+/* ===== OS Detail ===== */
+.os-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:10px;}
+.os-vehicle-card{display:flex; gap:16px; align-items:center; background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:18px; flex-wrap:wrap;}
+.vehicle-thumb{width:96px;height:72px; border-radius:8px; background:linear-gradient(135deg,#222,#333); flex-shrink:0; display:flex;align-items:center;justify-content:center; font-size:26px;}
+.os-grid{grid-template-columns: 1.6fr 1fr; align-items:start;}
+@media (max-width:1100px){.os-grid{grid-template-columns:1fr;}}
+.timeline-item{display:flex; gap:10px; padding:8px 0; font-size:12px;}
+.timeline-dot{width:9px;height:9px;border-radius:50%; margin-top:4px; flex-shrink:0;}
+.timeline-item .t-time{color:var(--text-mute); width:110px; flex-shrink:0;}
+
+.checklist-group{margin-bottom:18px;}
+.checklist-group-title{font-size:12.5px; font-weight:800; color:var(--text-dim); margin-bottom:8px; text-transform:uppercase; letter-spacing:.4px;}
+.check-item{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 4px; border-bottom:1px solid var(--border);}
+.check-item:last-child{border-bottom:none;}
+.check-item-name{font-size:12.8px;}
+.check-states{display:flex; gap:5px;}
+.state-btn{
+  width:32px;height:28px; border-radius:7px; border:1px solid var(--border-2); background:var(--bg-alt);
+  cursor:pointer; font-size:13px; display:flex; align-items:center; justify-content:center; color:var(--text-mute);
+}
+.state-btn[data-s="ok"].on{background:rgba(52,209,122,.18); border-color:var(--green); color:var(--green);}
+.state-btn[data-s="atencao"].on{background:rgba(245,179,0,.18); border-color:var(--yellow); color:var(--yellow-2);}
+.state-btn[data-s="critico"].on{background:rgba(255,84,104,.18); border-color:var(--red); color:var(--red);}
+.state-btn[data-s="na"].on{background:rgba(255,255,255,.1); border-color:#666; color:var(--text-dim);}
+
+.banner{border-radius:var(--radius); padding:12px 14px; font-size:12.6px; display:flex; gap:10px; align-items:flex-start; margin-bottom:14px;}
+.banner-critical{background:rgba(255,84,104,.1); border:1px solid rgba(255,84,104,.3); color:#ffb3bd;}
+.banner-ok{background:rgba(52,209,122,.1); border:1px solid rgba(52,209,122,.3); color:#a9f0c4;}
+
+.item-line{display:flex; align-items:center; gap:10px; padding:9px 2px; border-bottom:1px solid var(--border); font-size:12.6px;}
+.item-line:last-child{border-bottom:none;}
+.pill-icon{width:30px;height:30px;border-radius:8px; background:var(--bg-alt); display:flex;align-items:center;justify-content:center; flex-shrink:0;}
+
+.empty-state{text-align:center; padding:50px 20px; color:var(--text-mute);}
+.empty-state svg{width:46px;height:46px; opacity:.35; margin-bottom:10px;}
+
+.modal-overlay{position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:center; justify-content:center; z-index:100; padding:20px;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--panel); border:1px solid var(--border-2); border-radius:var(--radius); width:100%; max-width:480px; padding:20px;}
+.modal h3{margin:0 0 14px; font-size:16px;}
+.modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:18px;}
+
+.toast{position:fixed; bottom:20px; right:20px; background:var(--panel); border:1px solid var(--yellow); color:var(--text);
+  padding:12px 18px; border-radius:10px; font-size:13px; font-weight:700; z-index:200; box-shadow:0 8px 30px rgba(0,0,0,.4);
+  transform:translateY(20px); opacity:0; transition:.25s;}
+.toast.show{transform:translateY(0); opacity:1;}
+
+.view{display:none;}
+.view.active{display:block;}
+.hidden{display:none !important;}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="brand">
+      <svg class="bolt" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" fill="url(#g1)"/><defs><linearGradient id="g1" x1="4" y1="2" x2="20" y2="22"><stop offset="0" stop-color="#ffdf70"/><stop offset="1" stop-color="#ff7a30"/></linearGradient></defs></svg>
+      <div class="brand-text">
+        <div class="brand-name">GL ELECTROMECHANIC</div>
+        <div class="brand-sub">Mecânica &amp; Elétrica para Caminhões</div>
+      </div>
+    </div>
+    <nav class="nav" id="navList"></nav>
+    <div class="sidebar-footer">
+      <span><span class="dot-online"></span>Online</span>
+      <span>v1.0.0</span>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="breadcrumb" id="breadcrumb"><b>Dashboard</b></div>
+      <div class="search-box">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="globalSearch" placeholder="Buscar veículo, OS, cliente...">
+      </div>
+      <div class="topbar-spacer"></div>
+      <button class="btn-add" title="Nova OS" onclick="Router.go('os-new')">+</button>
+      <div class="icon-btn" title="Notificações"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="badge-count">3</span></div>
+      <div class="icon-btn" title="Ajuda">?</div>
+      <div class="user-chip" title="Carlos Silva">
+        <div class="avatar">CS</div>
+        <div class="user-meta"><div class="user-name">Carlos Silva</div><div class="user-role">Administrador</div></div>
+      </div>
+    </div>
+
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBody"></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =========================================================
+   GL ELECTROMECHANIC — sistema de gestão de oficina
+   Single-file app: HTML + CSS + JS, dados em localStorage
+========================================================= */
+
+const ICONS = {
+  dashboard:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>`,
+  os:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3h6l1 3h3a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h3l1-3Z"/><path d="M9 12h6M9 16h6"/></svg>`,
+  truck:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h11v9H3z"/><path d="M14 11h4l3 3v2h-7z"/><circle cx="7" cy="18" r="1.6"/><circle cx="17" cy="18" r="1.6"/></svg>`,
+  users:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c1-4 4-6 6.5-6s5.5 2 6.5 6"/><circle cx="17.5" cy="8.5" r="2.6"/><path d="M15.7 14.2c2.2.4 4 2.1 4.8 5.3"/></svg>`,
+  calendar:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>`,
+  box:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8 12 3 3 8v8l9 5 9-5Z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>`,
+  cash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 9v0M18 15v0"/></svg>`,
+  shield:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l7 3v6c0 5-3 8-7 9-4-1-7-4-7-9V6l7-3Z"/></svg>`,
+  chart:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M12 20V4M20 20v-7"/></svg>`,
+  cog:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.4 1Z"/></svg>`,
+  bolt:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/></svg>`,
+  wrench:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4l-6 6a2 2 0 0 0 2.8 2.8l6-6a4 4 0 0 0 5.4-5.4l-2.5 2.5-2-2 2.5-2.5Z"/></svg>`,
+  check:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 13 4 4L19 7"/></svg>`,
+  clock:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`,
+  alert:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 10v4M12 17v0"/></svg>`,
+  plus:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>`,
+  edit:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5Z"/></svg>`,
+  trash:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>`,
+  robot:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="8" width="16" height="11" rx="2"/><path d="M12 3v5M9 13v2M15 13v2"/><circle cx="9" cy="13" r="0.6"/></svg>`,
+  camera:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8h3l2-3h6l2 3h3v11H4Z"/><circle cx="12" cy="13.5" r="3.5"/></svg>`,
+  doc:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l4 4v14H7Z"/><path d="M14 3v4h4"/></svg>`,
+};
+
+const NAV = [
+  {id:'dashboard', label:'Dashboard', icon:'dashboard'},
+  {id:'os-list', label:'Ordens de Serviço', icon:'os'},
+  {id:'veiculos-list', label:'Veículos', icon:'truck'},
+  {id:'clientes-list', label:'Clientes', icon:'users'},
+  {id:'agenda', label:'Agenda / Boxes', icon:'calendar'},
+  {id:'estoque-list', label:'Estoque', icon:'box'},
+  {id:'financeiro', label:'Financeiro', icon:'cash'},
+  {id:'garantias', label:'Garantias', icon:'shield'},
+  {id:'relatorios', label:'Relatórios', icon:'chart'},
+  {id:'config', label:'Configurações', icon:'cog'},
+];
+
+const BREADCRUMBS = {
+  'dashboard':'Dashboard',
+  'os-list':'Ordens de Serviço',
+  'os-detail':'Ordens de Serviço &rsaquo; <b>OS</b>',
+  'os-new':'Ordens de Serviço &rsaquo; <b>Nova OS</b>',
+  'veiculos-list':'Veículos',
+  'veiculo-form':'Veículos &rsaquo; <b>Cadastro de Veículo</b>',
+  'clientes-list':'Clientes',
+  'cliente-form':'Clientes &rsaquo; <b>Cadastro de Cliente</b>',
+  'agenda':'Agenda / Boxes',
+  'estoque-list':'Estoque',
+  'estoque-form':'Estoque &rsaquo; <b>Nova Peça</b>',
+  'financeiro':'Financeiro',
+  'garantias':'Garantias',
+  'relatorios':'Relatórios',
+  'config':'Configurações',
+};
+
+/* ---------------- DATA LAYER ---------------- */
+const DB_KEY = 'gl_electromechanic_db_v1';
+
+const CHECKLIST_DEF = {
+  eletrica: {
+    nome: "Elétrica / Eletrônica",
+    grupos: [
+      {grupo:"Sistema de partida e carga", itens:[
+        "Tensão da bateria em repouso","Tensão da bateria com motor ligado (carga do alternador)",
+        "Estado dos bornes e terminais","Teste do motor de partida","Correia do alternador","Aterramento do chassi"]},
+      {grupo:"Chicote e conectores", itens:[
+        "Inspeção visual do chicote","Conectores multivias","Fusíveis e relés"]},
+      {grupo:"Painel e instrumentos", itens:[
+        "Funcionamento do painel/quadro de instrumentos","Códigos de falha (scanner OBD/J1939)",
+        "Sensores (rotação, temperatura, pressão de óleo)"]},
+      {grupo:"Iluminação e sinalização", itens:[
+        "Faróis","Lanternas","Setas","Luz de freio","Luz de ré","Luz de placa e teto","Pisca-alerta"]},
+      {grupo:"Sistemas auxiliares elétricos", itens:[
+        "Ar condicionado (parte elétrica)","Vidro elétrico / trava / alarme","Tacógrafo",
+        "Chicote de freio elétrico do reboque","Bateria auxiliar/estacionária"]},
+    ]
+  },
+  mecanica: {
+    nome: "Mecânica",
+    grupos: [
+      {grupo:"Motor", itens:[
+        "Nível e condição do óleo","Vazamentos (óleo/combustível/arrefecimento)","Filtro de ar","Filtro de óleo",
+        "Filtro de combustível","Filtro separador de água","Correias e tensores","Turbina/turbo","Sistema de arrefecimento"]},
+      {grupo:"Freios", itens:[
+        "Lonas/pastilhas","Tambor/disco","Sistema pneumático de freio","Regulador de folga automático","Freio de estacionamento"]},
+      {grupo:"Suspensão e direção", itens:[
+        "Molas / suspensão pneumática","Amortecedores","Buchas e pinos de mola","Caixa de direção","Terminais e barra de direção","Rolamento de roda"]},
+      {grupo:"Transmissão e diferencial", itens:[
+        "Nível de óleo do câmbio","Nível de óleo do diferencial","Embreagem","Cardan","Retentores"]},
+      {grupo:"Rodas e pneus", itens:[
+        "Pressão dos pneus","Desgaste dos pneus","Torque dos parafusos de roda","Alinhamento/balanceamento"]},
+      {grupo:"Chassi e estrutura", itens:[
+        "Trincas no chassi/longarina","Quinta roda / engate","Tanque de combustível e suportes"]},
+    ]
+  }
+};
+
+function uid(prefix){ return prefix + '_' + Math.random().toString(36).slice(2,9); }
+
+function buildEmptyChecklist(){
+  const out = {eletrica:[], mecanica:[]};
+  ['eletrica','mecanica'].forEach(cat=>{
+    CHECKLIST_DEF[cat].grupos.forEach(g=>{
+      g.itens.forEach(nome=>{
+        out[cat].push({id:uid('chk'), grupo:g.grupo, nome, estado:null, obs:'', tecnico:'', data:null});
+      });
+    });
+  });
+  return out;
+}
+
+function seedData(){
+  const clients = [
+    {id:'cli_1', nome:'ABC Transportes Ltda', doc:'12.345.678/0001-90', contato:'João da Silva', telefone:'(11) 99876-5432', email:'joao.silva@abctransportes.com.br', endereco:'Rua das Indústrias, 500', cidade:'São Paulo', estado:'SP', cep:'02123-000'},
+    {id:'cli_2', nome:'TransLog Transportes', doc:'22.333.444/0001-11', contato:'Marcos Paulo', telefone:'(11) 98888-1122', email:'contato@translog.com.br', endereco:'Av. Logística, 120', cidade:'Guarulhos', estado:'SP', cep:'07000-000'},
+    {id:'cli_3', nome:'Rodoforte Transportes', doc:'33.444.555/0001-22', contato:'Carlos Eduardo', telefone:'(11) 97777-2233', email:'ce@rodoforte.com.br', endereco:'Rod. Anhanguera, km 30', cidade:'Campinas', estado:'SP', cep:'13000-000'},
+    {id:'cli_4', nome:'TransJota Logística', doc:'44.555.666/0001-33', contato:'Marcos Paulo', telefone:'(19) 96666-3344', email:'marcos@transjota.com.br', endereco:'Rua dos Fretes, 88', cidade:'Campinas', estado:'SP', cep:'13010-000'},
+    {id:'cli_5', nome:'Express Brasil', doc:'55.666.777/0001-44', contato:'Rafael Lima', telefone:'(11) 95555-4455', email:'rafael@expressbrasil.com.br', endereco:'Av. das Cargas, 45', cidade:'São Paulo', estado:'SP', cep:'04500-000'},
+  ];
+
+  const vehicles = [
+    {id:'veh_1', placa:'ABC1D23', renavam:'01234567890', tipo:'Cavalo Mecânico', categoria:'Particular', marca:'Mercedes-Benz', modelo:'Actros 2651', anoFab:'2021', anoModelo:'2021', cor:'Branco', combustivel:'Diesel', km:'352540', horimetro:'5125', chassi:'9BM963403MB123456', motor:'OM 460 LA', portas:'2', tracao:'6x4', clienteId:'cli_1', obs:'Veículo utilizado em transporte de cargas fracionadas. Manutenção preventiva a cada 15.000 km.', ativo:true},
+    {id:'veh_2', placa:'FLW4H54', renavam:'02234567891', tipo:'Cavalo Mecânico', categoria:'Particular', marca:'Volvo', modelo:'FH 540', anoFab:'2022', anoModelo:'2022', cor:'Azul', combustivel:'Diesel', km:'210300', horimetro:'3100', chassi:'9BV540FH0NR654321', motor:'D13', portas:'2', tracao:'6x4', clienteId:'cli_2', obs:'', ativo:true},
+    {id:'veh_3', placa:'SCN4R50', renavam:'03234567892', tipo:'Cavalo Mecânico', categoria:'Particular', marca:'Scania', modelo:'R 450', anoFab:'2020', anoModelo:'2021', cor:'Prata', combustivel:'Diesel', km:'480200', horimetro:'6900', chassi:'9BS450SC0LR112233', motor:'DC13', portas:'2', tracao:'6x2', clienteId:'cli_3', obs:'', ativo:true},
+    {id:'veh_4', placa:'MTX2940', renavam:'04234567893', tipo:'Cavalo Mecânico', categoria:'Particular', marca:'MAN', modelo:'TGX 29.440', anoFab:'2019', anoModelo:'2019', cor:'Branco', combustivel:'Diesel', km:'610500', horimetro:'8200', chassi:'9BM294TG0KR998877', motor:'D26', portas:'2', tracao:'6x4', clienteId:'cli_4', obs:'', ativo:true},
+    {id:'veh_5', placa:'IVH5W60', renavam:'05234567894', tipo:'Cavalo Mecânico', categoria:'Particular', marca:'Iveco', modelo:'Hi-Way 560', anoFab:'2021', anoModelo:'2021', cor:'Vermelho', combustivel:'Diesel', km:'298700', horimetro:'4300', chassi:'9BI560HW0MR556677', motor:'Cursor 13', portas:'2', tracao:'6x4', clienteId:'cli_5', obs:'', ativo:true},
+  ];
+
+  function chk(){ return buildEmptyChecklist(); }
+
+  const osList = [
+    {id:'os_10251', numero:10251, veiculoId:'veh_1', clienteId:'cli_1', status:'Em manutenção', prioridade:'Alta', abertura:'2025-05-22T08:15', previsao:'2025-05-24T18:00', boxElevador:'Box 2', consultor:'Carlos Silva',
+      servicos:[
+        {id:uid('sv'), desc:'Diagnóstico sistema de partida', mecanico:'Marcos Oliveira', horas:1.5, valor:225},
+        {id:uid('sv'), desc:'Substituição do motor de partida', mecanico:'Marcos Oliveira', horas:3, valor:450},
+        {id:uid('sv'), desc:'Verificação e teste do alternador', mecanico:'Paulo Henrique', horas:1.2, valor:180},
+        {id:uid('sv'), desc:'Revisão elétrica geral', mecanico:'Paulo Henrique', horas:2.5, valor:375},
+      ],
+      pecas:[
+        {id:uid('pc'), codigo:'0001265', desc:'Motor de partida 24V', marca:'Bosch', qtd:1, valorUnit:1450},
+        {id:uid('pc'), codigo:'0003421', desc:'Relé auxiliar 24V 70A', marca:'Bosch', qtd:1, valorUnit:85},
+        {id:uid('pc'), codigo:'0005678', desc:'Cabo bateria 70mm', marca:'Cobra', qtd:1, valorUnit:120},
+        {id:uid('pc'), codigo:'0009823', desc:'Abraçadeira nylon', marca:'Diversos', qtd:10, valorUnit:2},
+      ],
+      diagnostico:'Caminhão falhando na partida, demora para pegar.',
+      checklist: chk(),
+      timeline:[
+        {t:'2025-05-22 08:15', label:'OS aberta', por:'Carlos Silva', cor:'green'},
+        {t:'2025-05-22 08:30', label:'Veículo recebido', por:'Carlos Silva', cor:'green'},
+        {t:'2025-05-22 09:00', label:'Diagnóstico iniciado', por:'Marcos Oliveira', cor:'blue'},
+        {t:'2025-05-22 10:25', label:'Aguardando aprovação', por:'Carlos Silva', cor:'yellow'},
+        {t:'2025-05-22 11:10', label:'Serviços em execução', por:'Marcos Oliveira', cor:'purple'},
+      ],
+      aprovacao:'pendente'
+    },
+    {id:'os_10248', numero:10248, veiculoId:'veh_2', clienteId:'cli_2', status:'Aguardando peça', prioridade:'Média', abertura:'2025-05-20T07:20', previsao:'2025-05-26T18:00', boxElevador:'Elevador 2', consultor:'Carlos Silva',
+      servicos:[{id:uid('sv'), desc:'Diagnóstico eletrônico e reparo do motor', mecanico:'Paulo Roberto', horas:2, valor:300}],
+      pecas:[{id:uid('pc'), codigo:'0002211', desc:'Bico injetor', marca:'Bosch', qtd:2, valorUnit:540}],
+      diagnostico:'Perda de potência e fumaça preta no escapamento.',
+      checklist: chk(),
+      timeline:[{t:'2025-05-20 07:20', label:'OS aberta', por:'Carlos Silva', cor:'green'},{t:'2025-05-20 09:00', label:'Diagnóstico iniciado', por:'Paulo Roberto', cor:'blue'},{t:'2025-05-21 10:00', label:'Aguardando peça', por:'Sistema', cor:'yellow'}],
+      aprovacao:'aprovado'
+    },
+    {id:'os_10247', numero:10247, veiculoId:'veh_3', clienteId:'cli_3', status:'Em manutenção', prioridade:'Alta', abertura:'2025-05-19T07:00', previsao:'2025-05-25T18:00', boxElevador:'Box Motor', consultor:'Carlos Silva',
+      servicos:[{id:uid('sv'), desc:'Revisão de freios e suspensão', mecanico:'Carlos Eduardo', horas:4, valor:600}],
+      pecas:[{id:uid('pc'), codigo:'0004532', desc:'Lona de freio', marca:'Fras-le', qtd:4, valorUnit:210}],
+      diagnostico:'Ruído ao frear e vibração na direção.',
+      checklist: chk(),
+      timeline:[{t:'2025-05-19 07:00', label:'OS aberta', por:'Carlos Silva', cor:'green'},{t:'2025-05-19 08:00', label:'Diagnóstico iniciado', por:'Carlos Eduardo', cor:'blue'}],
+      aprovacao:'aprovado'
+    },
+    {id:'os_10246', numero:10246, veiculoId:'veh_4', clienteId:'cli_4', status:'Em execução', prioridade:'Média', abertura:'2025-05-18T09:00', previsao:'2025-05-23T18:00', boxElevador:'Box Freios', consultor:'Carlos Silva',
+      servicos:[{id:uid('sv'), desc:'Troca de embreagem', mecanico:'Marcos Paulo', horas:6, valor:900}],
+      pecas:[{id:uid('pc'), codigo:'0006789', desc:'Kit de embreagem', marca:'Sachs', qtd:1, valorUnit:2200}],
+      diagnostico:'Embreagem patinando em subida.',
+      checklist: chk(),
+      timeline:[{t:'2025-05-18 09:00', label:'OS aberta', por:'Carlos Silva', cor:'green'}],
+      aprovacao:'aprovado'
+    },
+    {id:'os_10245', numero:10245, veiculoId:'veh_5', clienteId:'cli_5', status:'Finalizado', prioridade:'Baixa', abertura:'2025-05-15T08:00', previsao:'2025-05-16T18:00', boxElevador:'Box Elétrica', consultor:'Carlos Silva',
+      servicos:[{id:uid('sv'), desc:'Diagnóstico elétrico', mecanico:'Rafael Lima', horas:1.5, valor:220}],
+      pecas:[],
+      diagnostico:'Painel apresentando falhas intermitentes.',
+      checklist: chk(),
+      timeline:[{t:'2025-05-15 08:00', label:'OS aberta', por:'Carlos Silva', cor:'green'},{t:'2025-05-16 16:00', label:'OS finalizada', por:'Rafael Lima', cor:'green'}],
+      aprovacao:'aprovado'
+    },
+  ];
+
+  const stock = [
+    {id:'st_1', codigo:'0001265', desc:'Alternador Bosch 28V 150A', categoria:'Elétrica', marca:'Bosch', qtd:3, minimo:5, precoCusto:980, precoVenda:1450},
+    {id:'st_2', codigo:'0002210', desc:'Bateria 180Ah', categoria:'Elétrica', marca:'Moura', qtd:2, minimo:5, precoCusto:720, precoVenda:1050},
+    {id:'st_3', codigo:'0003311', desc:'Bico Injetor', categoria:'Injeção', marca:'Bosch', qtd:7, minimo:5, precoCusto:380, precoVenda:540},
+    {id:'st_4', codigo:'0004422', desc:'Turbina HX55', categoria:'Motor', marca:'Holset', qtd:1, minimo:2, precoCusto:2800, precoVenda:3900},
+    {id:'st_5', codigo:'0005533', desc:'Filtro Lubrificante', categoria:'Filtros', marca:'Fram', qtd:15, minimo:10, precoCusto:38, precoVenda:65},
+    {id:'st_6', codigo:'0006644', desc:'Correia Poly V', categoria:'Motor', marca:'Gates', qtd:8, minimo:5, precoCusto:60, precoVenda:98},
+  ];
+
+  return {clients, vehicles, os: osList, stock, counters:{os:10252, cliente:6, veiculo:6, estoque:7}};
+}
+
+function loadDB(){
+  let raw = localStorage.getItem(DB_KEY);
+  if(!raw){
+    const seeded = seedData();
+    localStorage.setItem(DB_KEY, JSON.stringify(seeded));
+    return seeded;
+  }
+  try{ return JSON.parse(raw); }catch(e){ const seeded = seedData(); localStorage.setItem(DB_KEY, JSON.stringify(seeded)); return seeded; }
+}
+function saveDB(){ localStorage.setItem(DB_KEY, JSON.stringify(DB)); }
+let DB = loadDB();
+
+/* ---------------- HELPERS ---------------- */
+function fmtMoney(v){ return 'R$ ' + (Number(v)||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}); }
+function fmtDate(iso){ if(!iso) return '—'; const d = new Date(iso); if(isNaN(d)) return iso; return d.toLocaleDateString('pt-BR') + ' ' + d.toTimeString().slice(0,5); }
+function fmtDateOnly(iso){ if(!iso) return '—'; const d = new Date(iso); if(isNaN(d)) return iso; return d.toLocaleDateString('pt-BR'); }
+function findVehicle(id){ return DB.vehicles.find(v=>v.id===id); }
+function findClient(id){ return DB.clients.find(c=>c.id===id); }
+function findOS(id){ return DB.os.find(o=>o.id===id); }
+function osTotalServicos(os){ return os.servicos.reduce((s,x)=>s+Number(x.valor||0),0); }
+function osTotalPecas(os){ return os.pecas.reduce((s,x)=>s+Number(x.valorUnit||0)*Number(x.qtd||0),0); }
+function osTotalGeral(os){ return osTotalServicos(os) + osTotalPecas(os); }
+
+function statusTag(status){
+  const map = {
+    'Em manutenção':'tag-green','Aguardando peça':'tag-yellow','Em execução':'tag-purple',
+    'Finalizado':'tag-blue','Aberta':'tag-gray','Elétrica':'tag-orange','Mecânica':'tag-red'
+  };
+  const cls = map[status] || 'tag-gray';
+  return `<span class="tag ${cls}">${status}</span>`;
+}
+function prioridadeTag(p){
+  const map = {'Alta':'tag-red','Média':'tag-yellow','Baixa':'tag-gray'};
+  return `<span class="tag ${map[p]||'tag-gray'}">${p}</span>`;
+}
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+function openModal(html){
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+document.getElementById('modalOverlay').addEventListener('click', e=>{ if(e.target.id==='modalOverlay') closeModal(); });
+
+/* ---------------- ROUTER ---------------- */
+const Router = {
+  current: 'dashboard',
+  params: {},
+  go(view, params){
+    this.current = view;
+    this.params = params || {};
+    render();
+    window.scrollTo(0,0);
+  }
+};
+
+function renderNav(){
+  const el = document.getElementById('navList');
+  el.innerHTML = NAV.map(n=>{
+    const activeGroup = {
+      'dashboard':['dashboard'], 'os-list':['os-list','os-detail','os-new'],
+      'veiculos-list':['veiculos-list','veiculo-form'], 'clientes-list':['clientes-list','cliente-form'],
+      'agenda':['agenda'], 'estoque-list':['estoque-list','estoque-form'], 'financeiro':['financeiro'],
+      'garantias':['garantias'], 'relatorios':['relatorios'], 'config':['config']
+    };
+    const isActive = (activeGroup[n.id]||[n.id]).includes(Router.current);
+    return `<div class="nav-item ${isActive?'active':''}" onclick="Router.go('${n.id}')">${ICONS[n.icon]}<span>${n.label}</span></div>`;
+  }).join('');
+}
+
+function render(){
+  renderNav();
+  document.getElementById('breadcrumb').innerHTML = BREADCRUMBS[Router.current] || '';
+  const c = document.getElementById('content');
+  const views = {
+    'dashboard': renderDashboard,
+    'os-list': renderOSList,
+    'os-detail': ()=>renderOSDetail(Router.params.id),
+    'os-new': renderOSNew,
+    'veiculos-list': renderVeiculosList,
+    'veiculo-form': ()=>renderVeiculoForm(Router.params.id),
+    'clientes-list': renderClientesList,
+    'cliente-form': ()=>renderClienteForm(Router.params.id),
+    'agenda': renderAgenda,
+    'estoque-list': renderEstoqueList,
+    'estoque-form': ()=>renderEstoqueForm(Router.params.id),
+    'financeiro': renderFinanceiro,
+    'garantias': renderGarantias,
+    'relatorios': renderRelatorios,
+    'config': renderConfig,
+  };
+  c.innerHTML = (views[Router.current] || renderDashboard)();
+}
+
+/* ============ DASHBOARD ============ */
+function renderDashboard(){
+  const emAndamento = DB.os.filter(o=>o.status!=='Finalizado');
+  const aguardandoPecas = DB.os.filter(o=>o.status==='Aguardando peça');
+  const emManutencao = DB.os.filter(o=>o.status==='Em manutenção'||o.status==='Em execução');
+  const finalizadosHoje = DB.os.filter(o=>o.status==='Finalizado').length;
+  const totalFaturamento = DB.os.reduce((s,o)=>s+osTotalGeral(o),0);
+  const ticketMedio = DB.os.length? totalFaturamento/DB.os.length : 0;
+  const estoqueBaixo = DB.stock.filter(s=>s.qtd < s.minimo);
+
+  const stats = [
+    {label:'Caminhões na oficina', value: DB.vehicles.length + 13, icon:'truck', color:'blue', delta:'+12% vs ontem'},
+    {label:'Aguardando peças', value: aguardandoPecas.length + 4, icon:'clock', color:'yellow', delta:'+8% vs ontem'},
+    {label:'Em manutenção', value: emManutencao.length + 5, icon:'wrench', color:'blue', delta:'+5% vs ontem'},
+    {label:'Serviços de elétrica', value: 4, icon:'bolt', color:'orange', delta:'+3% vs ontem'},
+    {label:'Serviços de mecânica', value: 8, icon:'cog', color:'purple', delta:'+7% vs ontem'},
+    {label:'Finalizados hoje', value: 12, icon:'check', color:'green', delta:'+20% vs ontem'},
+    {label:'Entregues hoje', value: 6, icon:'truck', color:'blue', delta:'+15% vs ontem'},
+  ];
+  const colorMap = {blue:'rgba(58,160,255,.15)',yellow:'rgba(245,179,0,.15)',orange:'rgba(255,122,48,.15)',purple:'rgba(176,131,255,.15)',green:'rgba(52,209,122,.15)'};
+  const textMap = {blue:'var(--blue)',yellow:'var(--yellow-2)',orange:'var(--orange)',purple:'var(--purple)',green:'var(--green)'};
+
+  const statCards = stats.map(s=>`
+    <div class="stat-card">
+      <div class="stat-top">
+        <div class="stat-icon" style="background:${colorMap[s.color]};color:${textMap[s.color]}">${ICONS[s.icon]}</div>
+      </div>
+      <div class="stat-value">${s.value}</div>
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-delta up">▲ ${s.delta}</div>
+    </div>`).join('');
+
+  const osRows = DB.os.slice(0,6).map(o=>{
+    const v = findVehicle(o.veiculoId), cl = findClient(o.clienteId);
+    return `<tr class="clickable" onclick="Router.go('os-detail',{id:'${o.id}'})">
+      <td>#${o.numero}</td>
+      <td>${v?v.marca+' '+v.modelo:'—'}<div style="color:var(--text-mute);font-size:11px;">${cl?cl.nome:''}</div></td>
+      <td>${o.diagnostico? o.diagnostico.slice(0,28)+(o.diagnostico.length>28?'…':'') : '—'}</td>
+      <td>${statusTag(o.status)}</td>
+      <td>${fmtDateOnly(o.previsao)}</td>
+    </tr>`;
+  }).join('');
+
+  const aguardandoRows = aguardandoPecas.slice(0,5).map(o=>{
+    const v = findVehicle(o.veiculoId);
+    const dias = Math.max(1, Math.round((Date.now()-new Date(o.abertura))/86400000));
+    return `<div class="list-row"><div><div class="l-main">OS #${o.numero} · ${v?v.marca+' '+v.modelo:''}</div><div class="l-sub">Há ${dias} dia(s)</div></div><span class="tag tag-yellow">${ICONS.clock}</span></div>`;
+  }).join('') || `<div class="list-row"><span class="l-sub">Nenhum veículo aguardando peças.</span></div>`;
+
+  const alerts = [
+    {icon:'shield', color:'yellow', text:'3 garantias vencendo esta semana'},
+    {icon:'box', color:'orange', text: estoqueBaixo.length? estoqueBaixo.length+' itens de estoque abaixo do mínimo' : 'Estoque em dia'},
+    {icon:'clock', color:'red', text:'2 caminhões há mais de 15 dias na oficina'},
+    {icon:'clock', color:'yellow', text:'5 OS sem atualização há mais de 48h'},
+  ];
+  const alertRows = alerts.map(a=>`<div class="alert-row"><div class="alert-ico" style="background:${colorMap[a.color]||colorMap.yellow};color:${textMap[a.color]||textMap.yellow}">${ICONS[a.icon]}</div><div>${a.text}</div></div>`).join('');
+
+  const checklistRows = DB.os.slice(0,4).map(o=>{
+    const v = findVehicle(o.veiculoId);
+    return `<div class="list-row"><div><div class="l-main">OS #${o.numero} · ${v?v.marca+' '+v.modelo:''}</div><div class="l-sub">${fmtDate(o.abertura)}</div></div><span class="btn btn-sm btn-ghost" onclick="Router.go('os-detail',{id:'${o.id}'})">Ver</span></div>`;
+  }).join('');
+
+  // simple chart (svg line, mock data)
+  const points = [40,55,50,70,65,90,85,100,95,120,110,130];
+  const w=600,h=170,pad=10;
+  const max = Math.max(...points);
+  const stepX = (w-2*pad)/(points.length-1);
+  const path = points.map((p,i)=>`${i===0?'M':'L'}${pad+i*stepX},${h-pad-(p/max)*(h-2*pad)}`).join(' ');
+  const area = path + ` L${pad+(points.length-1)*stepX},${h-pad} L${pad},${h-pad} Z`;
+
+  return `
+  <div class="grid stat-row">${statCards}</div>
+
+  <div class="grid dash-grid">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Ordem de Serviço em andamento</div><span class="panel-link" onclick="Router.go('os-list')">Ver todas →</span></div>
+      <table><thead><tr><th>OS</th><th>Caminhão / Cliente</th><th>Serviço</th><th>Status</th><th>Previsão</th></tr></thead><tbody>${osRows}</tbody></table>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Indicadores da oficina</div></div>
+      <div class="grid" style="grid-template-columns:repeat(2,1fr); gap:12px; margin-bottom:14px;">
+        <div><div class="stat-value" style="font-size:17px;">${fmtMoney(totalFaturamento)}</div><div class="stat-label">Faturamento</div></div>
+        <div><div class="stat-value" style="font-size:17px;">${DB.os.length}</div><div class="stat-label">OS finalizadas</div></div>
+        <div><div class="stat-value" style="font-size:17px;">${fmtMoney(ticketMedio)}</div><div class="stat-label">Ticket médio</div></div>
+        <div><div class="stat-value" style="font-size:17px;">842h</div><div class="stat-label">Horas trabalhadas</div></div>
+      </div>
+      <svg class="chart-wrap" viewBox="0 0 ${w} ${h}">
+        <defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f5b300" stop-opacity="0.35"/><stop offset="1" stop-color="#f5b300" stop-opacity="0"/></linearGradient></defs>
+        <path d="${area}" fill="url(#areaGrad)"/>
+        <path d="${path}" fill="none" stroke="#f5b300" stroke-width="2.5"/>
+      </svg>
+    </div>
+
+    <div class="panel ai-box">
+      <div class="panel-head"><div class="panel-title">${ICONS.robot} IA Assistente</div><span class="tag tag-yellow">NOVO</span></div>
+      <div class="ai-msg">Olá Carlos! 👋 Aqui está o resumo de hoje:
+        <ul>
+          <li>${aguardandoPecas.length} caminhões aguardando peças.</li>
+          <li>2 caminhões estão há mais de 15 dias.</li>
+          <li>Estoque de alternadores está baixo.</li>
+          <li>3 garantias vencem esta semana.</li>
+        </ul>
+      </div>
+      <div style="display:flex; gap:8px; margin-top:12px;">
+        <button class="btn btn-primary btn-sm" onclick="toast('Pedido de compra sugerido gerado.')">Emitir pedidos</button>
+        <button class="btn btn-ghost btn-sm" onclick="this.closest('.ai-box').style.display='none'">Depois</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid dash-grid2">
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Caminhões aguardando peças</div><span class="panel-link" onclick="Router.go('estoque-list')">Ver todos →</span></div>
+      ${aguardandoRows}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Alertas importantes</div><span class="panel-link">Ver todos →</span></div>
+      ${alertRows}
+    </div>
+    <div class="panel">
+      <div class="panel-head"><div class="panel-title">Checklists de entrada recentes</div><span class="panel-link" onclick="Router.go('os-list')">Ver todos →</span></div>
+      ${checklistRows}
+    </div>
+  </div>
+  `;
+}
+
+/* ============ VEÍCULOS ============ */
+function renderVeiculosList(){
+  const rows = DB.vehicles.map(v=>{
+    const cl = findClient(v.clienteId);
+    const osCount = DB.os.filter(o=>o.veiculoId===v.id).length;
+    return `<tr class="clickable" onclick="Router.go('veiculo-form',{id:'${v.id}'})">
+      <td><b>${v.placa}</b></td>
+      <td>${v.marca} ${v.modelo}</td>
+      <td>${v.chassi}</td>
+      <td>${cl?cl.nome:'—'}</td>
+      <td>${Number(v.km).toLocaleString('pt-BR')} km</td>
+      <td>${v.ativo? '<span class="tag tag-green">Ativo</span>' : '<span class="tag tag-gray">Inativo</span>'}</td>
+      <td>${osCount} OS</td>
+    </tr>`;
+  }).join('');
+  return `
+  <div class="os-head">
+    <div><div class="page-title">Veículos</div><div class="page-sub">Gerencie os caminhões cadastrados na oficina</div></div>
+    <button class="btn btn-primary" onclick="Router.go('veiculo-form')">${ICONS.plus} Novo veículo</button>
+  </div>
+  <div class="panel">
+    <table><thead><tr><th>Placa</th><th>Marca / Modelo</th><th>Chassi</th><th>Cliente</th><th>KM</th><th>Status</th><th>Histórico</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="7"><div class="empty-state">Nenhum veículo cadastrado ainda.</div></td></tr>'}</tbody></table>
+  </div>`;
+}
+
+function renderVeiculoForm(id){
+  const editing = !!id;
+  const v = editing ? findVehicle(id) : {placa:'',renavam:'',tipo:'Cavalo Mecânico',categoria:'Particular',marca:'',modelo:'',anoFab:'',anoModelo:'',cor:'',combustivel:'Diesel',km:'',horimetro:'',chassi:'',motor:'',portas:'2',tracao:'6x4',clienteId:'',obs:'',ativo:true};
+  const cl = v.clienteId ? findClient(v.clienteId) : null;
+  const clientOptions = DB.clients.map(c=>`<option value="${c.id}" ${c.id===v.clienteId?'selected':''}>${c.nome}</option>`).join('');
+  const os = editing ? DB.os.filter(o=>o.veiculoId===id) : [];
+  const osRows = os.slice(0,5).map(o=>`<div class="list-row"><span class="l-main">OS #${o.numero}</span>${statusTag(o.status)}</div>`).join('') || '<div class="list-row"><span class="l-sub">Sem histórico de OS.</span></div>';
+
+  return `
+  <div class="os-head">
+    <div><div class="page-title">${editing?'Editar Veículo':'Cadastro de Veículo'}</div><div class="page-sub">Preencha as informações do veículo</div></div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-ghost" onclick="Router.go('veiculos-list')">← Voltar</button>
+      <button class="btn btn-primary" onclick="saveVeiculo('${editing?id:''}')">Salvar veículo</button>
+    </div>
+  </div>
+
+  <div class="form-layout">
+    <div class="panel">
+      <div class="form-tabs">
+        <div class="form-tab active">Dados Gerais</div>
+        <div class="form-tab">Informações Técnicas</div>
+        <div class="form-tab">Componentes</div>
+        <div class="form-tab">Observações</div>
+        <div class="form-tab">Documentos</div>
+      </div>
+
+      <div class="section-h">Dados do Veículo</div>
+      <div class="form-grid">
+        <div class="field"><label>Placa <span class="req">*</span></label><input id="f_placa" value="${v.placa}" placeholder="ABC1D23"></div>
+        <div class="field"><label>Renavam</label><input id="f_renavam" value="${v.renavam}"></div>
+        <div class="field"><label>Tipo <span class="req">*</span></label>
+          <select id="f_tipo">${['Cavalo Mecânico','Toco','Truck','Bitrem','Rodotrem','Carreta','VUC'].map(t=>`<option ${t===v.tipo?'selected':''}>${t}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Categoria</label>
+          <select id="f_categoria">${['Particular','Aluguel','Frota Própria'].map(t=>`<option ${t===v.categoria?'selected':''}>${t}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Marca <span class="req">*</span></label><input id="f_marca" value="${v.marca}"></div>
+        <div class="field"><label>Modelo <span class="req">*</span></label><input id="f_modelo" value="${v.modelo}"></div>
+        <div class="field"><label>Ano Fabricação <span class="req">*</span></label><input id="f_anoFab" value="${v.anoFab}"></div>
+        <div class="field"><label>Ano Modelo <span class="req">*</span></label><input id="f_anoModelo" value="${v.anoModelo}"></div>
+        <div class="field"><label>Cor</label><input id="f_cor" value="${v.cor}"></div>
+        <div class="field"><label>Combustível</label>
+          <select id="f_combustivel">${['Diesel','Gasolina','Etanol','Elétrico'].map(t=>`<option ${t===v.combustivel?'selected':''}>${t}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Quilometragem</label><input id="f_km" value="${v.km}"></div>
+        <div class="field"><label>Horímetro</label><input id="f_horimetro" value="${v.horimetro}"></div>
+        <div class="field"><label>Chassi (VIN) <span class="req">*</span></label><input id="f_chassi" value="${v.chassi}"></div>
+        <div class="field"><label>Motor <span class="req">*</span></label><input id="f_motor" value="${v.motor}"></div>
+        <div class="field"><label>Portas</label><input id="f_portas" value="${v.portas}"></div>
+        <div class="field"><label>Capacidade de Tração</label>
+          <select id="f_tracao">${['4x2','6x2','6x4','8x2','8x4'].map(t=>`<option ${t===v.tracao?'selected':''}>${t}</option>`).join('')}</select>
+        </div>
+      </div>
+
+      <div class="section-h">Informações do Proprietário</div>
+      <div class="form-grid">
+        <div class="field field-full"><label>Cliente / Empresa <span class="req">*</span></label>
+          <select id="f_cliente">${'<option value="">Selecione...</option>'+clientOptions}</select>
+        </div>
+        <div class="field"><label>CNPJ / CPF</label><input value="${cl?cl.doc:''}" disabled></div>
+        <div class="field"><label>Contato</label><input value="${cl?cl.contato:''}" disabled></div>
+        <div class="field"><label>Telefone</label><input value="${cl?cl.telefone:''}" disabled></div>
+        <div class="field"><label>E-mail</label><input value="${cl?cl.email:''}" disabled></div>
+      </div>
+
+      <div class="section-h">Informações Adicionais</div>
+      <div class="form-grid">
+        <div class="field field-full"><label>Observações gerais sobre o veículo</label><textarea id="f_obs" rows="3">${v.obs||''}</textarea></div>
+      </div>
+      <div style="margin-top:16px;">
+        <label class="switch"><input type="checkbox" id="f_ativo" ${v.ativo?'checked':''}><span class="switch-track" onclick="const i=this.previousElementSibling;i.checked=!i.checked;"></span> Veículo ativo — disponível para novas OS</label>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-title" style="margin-bottom:10px;">Fotos do Veículo</div>
+        <div class="photo-box">${ICONS.camera}</div>
+        <div class="photo-thumbs"><div class="photo-thumb">${ICONS.camera}</div><div class="photo-thumb">${ICONS.camera}</div><div class="photo-thumb">+ Adicionar</div></div>
+      </div>
+      ${editing ? `
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-title" style="margin-bottom:10px;">Resumo do Veículo</div>
+        <div class="list-row"><span class="l-sub">Placa</span><b>${v.placa}</b></div>
+        <div class="list-row"><span class="l-sub">Chassi</span><b>${v.chassi}</b></div>
+        <div class="list-row"><span class="l-sub">Motor</span><b>${v.motor}</b></div>
+        <div class="list-row"><span class="l-sub">Quilometragem</span><b>${Number(v.km||0).toLocaleString('pt-BR')} km</b></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><div class="panel-title">Histórico de OS</div><span class="panel-link" onclick="Router.go('os-list')">Ver todas →</span></div>
+        ${osRows}
+      </div>` : ''}
+    </div>
+  </div>
+  `;
+}
+
+function saveVeiculo(id){
+  const get = k=>document.getElementById(k).value;
+  if(!get('f_placa') || !get('f_marca') || !get('f_modelo') || !get('f_chassi')){
+    toast('Preencha os campos obrigatórios (*).'); return;
+  }
+  const data = {
+    placa:get('f_placa'), renavam:get('f_renavam'), tipo:get('f_tipo'), categoria:get('f_categoria'),
+    marca:get('f_marca'), modelo:get('f_modelo'), anoFab:get('f_anoFab'), anoModelo:get('f_anoModelo'),
+    cor:get('f_cor'), combustivel:get('f_combustivel'), km:get('f_km'), horimetro:get('f_horimetro'),
+    chassi:get('f_chassi'), motor:get('f_motor'), portas:get('f_portas'), tracao:get('f_tracao'),
+    clienteId:get('f_cliente'), obs:get('f_obs'), ativo: document.getElementById('f_ativo').checked
+  };
+  if(id){
+    Object.assign(findVehicle(id), data);
+  } else {
+    data.id = uid('veh');
+    DB.vehicles.push(data);
+  }
+  saveDB();
+  toast('Veículo salvo com sucesso!');
+  Router.go('veiculos-list');
+}
+
+/* ============ CLIENTES ============ */
+function renderClientesList(){
+  const rows = DB.clients.map(c=>{
+    const veiculos = DB.vehicles.filter(v=>v.clienteId===c.id).length;
+    return `<tr class="clickable" onclick="Router.go('cliente-form',{id:'${c.id}'})">
+      <td><b>${c.nome}</b></td><td>${c.doc}</td><td>${c.contato}</td><td>${c.telefone}</td><td>${veiculos} veículo(s)</td>
+    </tr>`;
+  }).join('');
+  return `
+  <div class="os-head">
+    <div><div class="page-title">Clientes</div><div class="page-sub">Empresas e contatos atendidos pela oficina</div></div>
+    <button class="btn btn-primary" onclick="Router.go('cliente-form')">${ICONS.plus} Novo cliente</button>
+  </div>
+  <div class="panel">
+    <table><thead><tr><th>Cliente</th><th>CNPJ/CPF</th><th>Contato</th><th>Telefone</th><th>Veículos</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="5"><div class="empty-state">Nenhum cliente cadastrado ainda.</div></td></tr>'}</tbody></table>
+  </div>`;
+}
+
+function renderClienteForm(id){
+  const editing = !!id;
+  const c = editing? findClient(id) : {nome:'',doc:'',contato:'',telefone:'',email:'',endereco:'',cidade:'',estado:'',cep:''};
+  return `
+  <div class="os-head">
+    <div><div class="page-title">${editing?'Editar Cliente':'Novo Cliente'}</div><div class="page-sub">Dados da empresa/cliente</div></div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-ghost" onclick="Router.go('clientes-list')">← Voltar</button>
+      <button class="btn btn-primary" onclick="saveCliente('${editing?id:''}')">Salvar cliente</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="form-grid">
+      <div class="field field-full"><label>Nome / Razão Social <span class="req">*</span></label><input id="c_nome" value="${c.nome}"></div>
+      <div class="field"><label>CNPJ / CPF</label><input id="c_doc" value="${c.doc}"></div>
+      <div class="field"><label>Contato</label><input id="c_contato" value="${c.contato}"></div>
+      <div class="field"><label>Telefone</label><input id="c_telefone" value="${c.telefone}"></div>
+      <div class="field"><label>E-mail</label><input id="c_email" value="${c.email}"></div>
+      <div class="field field-full"><label>Endereço</label><input id="c_endereco" value="${c.endereco}"></div>
+      <div class="field"><label>Cidade</label><input id="c_cidade" value="${c.cidade}"></div>
+      <div class="field"><label>Estado</label><input id="c_estado" value="${c.estado}"></div>
+      <div class="field"><label>CEP</label><input id="c_cep" value="${c.cep}"></div>
+    </div>
+  </div>`;
+}
+function saveCliente(id){
+  const get=k=>document.getElementById(k).value;
+  if(!get('c_nome')){ toast('Informe o nome do cliente.'); return; }
+  const data = {nome:get('c_nome'),doc:get('c_doc'),contato:get('c_contato'),telefone:get('c_telefone'),email:get('c_email'),endereco:get('c_endereco'),cidade:get('c_cidade'),estado:get('c_estado'),cep:get('c_cep')};
+  if(id){ Object.assign(findClient(id), data); } else { data.id = uid('cli'); DB.clients.push(data); }
+  saveDB(); toast('Cliente salvo com sucesso!'); Router.go('clientes-list');
+}
+
+/* ============ ORDENS DE SERVIÇO ============ */
+function renderOSList(){
+  const rows = DB.os.map(o=>{
+    const v = findVehicle(o.veiculoId), cl = findClient(o.clienteId);
+    return `<tr class="clickable" onclick="Router.go('os-detail',{id:'${o.id}'})">
+      <td><b>#${o.numero}</b></td>
+      <td>${v?v.marca+' '+v.modelo:'—'}<div style="color:var(--text-mute);font-size:11px;">${v?v.placa:''}</div></td>
+      <td>${cl?cl.nome:'—'}</td>
+      <td>${statusTag(o.status)}</td>
+      <td>${prioridadeTag(o.prioridade)}</td>
+      <td>${fmtDateOnly(o.abertura)}</td>
+      <td>${fmtDateOnly(o.previsao)}</td>
+      <td>${fmtMoney(osTotalGeral(o))}</td>
+    </tr>`;
+  }).join('');
+  return `
+  <div class="os-head">
+    <div><div class="page-title">Ordens de Serviço</div><div class="page-sub">Acompanhe todas as OS da oficina</div></div>
+    <button class="btn btn-primary" onclick="Router.go('os-new')">${ICONS.plus} Nova OS</button>
+  </div>
+  <div class="panel">
+    <table><thead><tr><th>OS</th><th>Veículo</th><th>Cliente</th><th>Status</th><th>Prioridade</th><th>Abertura</th><th>Previsão</th><th>Total</th></tr></thead>
+    <tbody>${rows || '<tr><td colspan="8"><div class="empty-state">Nenhuma OS cadastrada ainda.</div></td></tr>'}</tbody></table>
+  </div>`;
+}
+
+function renderOSNew(){
+  if(DB.vehicles.length===0){
+    return `<div class="panel"><div class="empty-state">${ICONS.truck}<div>Cadastre um veículo antes de abrir uma OS.</div><button class="btn btn-primary" style="margin-top:14px;" onclick="Router.go('veiculo-form')">Cadastrar veículo</button></div></div>`;
+  }
+  const options = DB.vehicles.map(v=>`<option value="${v.id}">${v.placa} — ${v.marca} ${v.modelo}</option>`).join('');
+  return `
+  <div class="os-head">
+    <div><div class="page-title">Nova Ordem de Serviço</div><div class="page-sub">Selecione o veículo e abra a OS</div></div>
+    <button class="btn btn-ghost" onclick="Router.go('os-list')">← Voltar</button>
+  </div>
+  <div class="panel">
+    <div class="form-grid">
+      <div class="field field-full"><label>Veículo <span class="req">*</span></label><select id="n_veiculo">${options}</select></div>
+      <div class="field"><label>Prioridade</label><select id="n_prioridade"><option>Média</option><option>Alta</option><option>Baixa</option></select></div>
+      <div class="field"><label>Previsão de entrega</label><input id="n_previsao" type="date"></div>
+      <div class="field"><label>Box / Elevador</label><input id="n_box" placeholder="Ex: Box 1"></div>
+      <div class="field field-full"><label>Descrição do problema relatado</label><textarea id="n_diagnostico" rows="3"></textarea></div>
+    </div>
+    <div style="margin-top:16px; display:flex; justify-content:flex-end;">
+      <button class="btn btn-primary" onclick="createOS()">Abrir OS</button>
+    </div>
+  </div>`;
+}
+function createOS(){
+  const veiculoId = document.getElementById('n_veiculo').value;
+  const v = findVehicle(veiculoId);
+  if(!v){ toast('Selecione um veículo.'); return; }
+  const numero = DB.counters.os++;
+  const os = {
+    id: uid('os'), numero, veiculoId, clienteId: v.clienteId,
+    status:'Aberta', prioridade: document.getElementById('n_prioridade').value,
+    abertura: new Date().toISOString(), previsao: document.getElementById('n_previsao').value || '',
+    boxElevador: document.getElementById('n_box').value || '—', consultor:'Carlos Silva',
+    servicos:[], pecas:[], diagnostico: document.getElementById('n_diagnostico').value,
+    checklist: buildEmptyChecklist(),
+    timeline:[{t: new Date().toLocaleString('pt-BR'), label:'OS aberta', por:'Carlos Silva', cor:'green'}],
+    aprovacao:'pendente'
+  };
+  DB.os.push(os);
+  saveDB();
+  toast('OS #'+numero+' aberta com sucesso!');
+  Router.go('os-detail',{id:os.id});
+}
+
+function renderOSDetail(id){
+  const o = findOS(id);
+  if(!o) return `<div class="panel"><div class="empty-state">OS não encontrada.</div></div>`;
+  const v = findVehicle(o.veiculoId), cl = findClient(o.clienteId);
+  const tab = Router.params.tab || 'servicos';
+
+  const tabs = [
+    ['servicos','Serviços e Peças'],['checklist','Checklist'],['diagnostico','Diagnóstico'],
+    ['historico','Histórico'],['anotacoes','Anotações'],['fotos','Fotos/Vídeos'],['docs','Documentos']
+  ];
+  const tabsHtml = tabs.map(([k,label])=>`<div class="form-tab ${tab===k?'active':''}" onclick="Router.go('os-detail',{id:'${id}',tab:'${k}'})">${label}</div>`).join('');
+
+  let body = '';
+  if(tab==='servicos') body = renderOSServicos(o);
+  else if(tab==='checklist') body = renderOSChecklist(o);
+  else if(tab==='diagnostico') body = renderOSDiagnostico(o);
+  else if(tab==='historico') body = renderOSHistorico(o);
+  else body = `<div class="empty-state">${ICONS.doc}<div>Nenhum registro nesta seção ainda.</div></div>`;
+
+  const totalServ = osTotalServicos(o), totalPecas = osTotalPecas(o), totalGeral = osTotalGeral(o);
+
+  const statusOptions = ['Aberta','Em manutenção','Aguardando peça','Em execução','Finalizado'];
+  const statusSelect = `<select onchange="updateOSStatus('${id}', this.value)" style="background:var(--bg-alt);border:1px solid var(--border-2);border-radius:var(--radius-sm);color:var(--text);padding:6px 10px;font-size:12px;font-weight:700;">
+    ${statusOptions.map(s=>`<option ${s===o.status?'selected':''}>${s}</option>`).join('')}
+  </select>`;
+
+  return `
+  <div class="os-head">
+    <div><div class="page-title">OS #${o.numero} ${statusTag(o.status)}</div><div class="page-sub">Aberta em: ${fmtDate(o.abertura)}</div></div>
+    <div style="display:flex; gap:10px; align-items:center;">
+      <button class="btn btn-ghost" onclick="window.print()">Imprimir OS</button>
+      ${statusSelect}
+      <button class="btn btn-primary" onclick="finalizeOS('${id}')">Finalizar OS</button>
+    </div>
+  </div>
+
+  <div class="os-vehicle-card">
+    <div class="vehicle-thumb">🚛</div>
+    <div style="flex:1; min-width:220px;">
+      <div style="font-weight:800; font-size:15px;">${v? v.marca+' '+v.modelo : 'Veículo não encontrado'}</div>
+      <div style="color:var(--text-dim); font-size:12.5px;">${cl?cl.nome:''}</div>
+      <div style="color:var(--text-mute); font-size:11.5px; margin-top:4px;">Placa: <b style="color:var(--text)">${v?v.placa:'—'}</b> &nbsp;·&nbsp; Km: ${v?Number(v.km).toLocaleString('pt-BR'):'—'} &nbsp;·&nbsp; Chassi: ${v?v.chassi:'—'} &nbsp;·&nbsp; Motor: ${v?v.motor:'—'}</div>
+    </div>
+    <div style="text-align:left;">
+      <div style="font-size:11px; color:var(--text-mute);">Cliente</div>
+      <div style="font-weight:700; font-size:13px;">${cl?cl.nome:'—'}</div>
+      <div style="font-size:11.5px; color:var(--text-dim);">${cl?cl.telefone:''}</div>
+    </div>
+    <div style="text-align:left;">
+      <div style="font-size:11px; color:var(--text-mute);">Previsão de entrega</div>
+      <div style="font-weight:700; font-size:13px;">${fmtDateOnly(o.previsao)}</div>
+      <div style="font-size:11.5px; color:var(--text-dim);">Prioridade: ${prioridadeTag(o.prioridade)}</div>
+    </div>
+    <div style="text-align:left;">
+      <div style="font-size:11px; color:var(--text-mute);">Box / Elevador</div>
+      <div style="font-weight:700; font-size:13px;">${o.boxElevador||'—'}</div>
+      <div style="font-size:11.5px; color:var(--text-dim);">Consultor: ${o.consultor}</div>
+    </div>
+  </div>
+
+  <div class="grid os-grid">
+    <div class="panel">
+      <div class="form-tabs">${tabsHtml}</div>
+      ${body}
+    </div>
+
+    <div>
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-title" style="margin-bottom:10px;">Resumo financeiro</div>
+        <div class="list-row"><span class="l-sub">Total de serviços</span><b>${fmtMoney(totalServ)}</b></div>
+        <div class="list-row"><span class="l-sub">Total de peças</span><b>${fmtMoney(totalPecas)}</b></div>
+        <div class="list-row"><span class="l-sub">Descontos</span><b>R$ 0,00</b></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:10px; border-top:1px solid var(--border);">
+          <span style="font-weight:800;">TOTAL GERAL</span><span style="font-weight:800; color:var(--yellow-2); font-size:17px;">${fmtMoney(totalGeral)}</span>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-bottom:16px;">
+        <div class="panel-title" style="margin-bottom:10px;">Situação atual</div>
+        ${o.timeline.slice(-5).map(t=>`<div class="timeline-item"><span class="t-time">${t.t}</span><span class="timeline-dot" style="background:var(--${t.cor})"></span><span>${t.label} <span style="color:var(--text-mute)">— ${t.por}</span></span></div>`).join('')}
+      </div>
+
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:10px;">Aprovação do cliente</div>
+        <div style="background:var(--bg-alt); border:1px dashed var(--border-2); border-radius:8px; height:90px; display:flex; align-items:center; justify-content:center; color:var(--text-mute); font-size:12px; margin-bottom:10px;">
+          ${o.aprovacao==='aprovado' ? '✓ Assinado digitalmente' : 'Assinatura pendente'}
+        </div>
+        ${o.aprovacao==='aprovado' ? `<span class="tag tag-green">Aprovação recebida</span>` : `<button class="btn btn-primary" style="width:100%;" onclick="approveOS('${id}')">Solicitar aprovação</button>`}
+      </div>
+    </div>
+  </div>
+  `;
+}
+
+function renderOSServicos(o){
+  const servRows = o.servicos.map(s=>`<tr>
+    <td>${s.desc}</td><td>${s.mecanico}</td><td>${s.horas}</td><td>${fmtMoney(s.valor)}</td>
+    <td><span style="cursor:pointer;color:var(--text-mute);" onclick="removeItem('${o.id}','servicos','${s.id}')">${ICONS.trash}</span></td>
+  </tr>`).join('');
+  const pecaRows = o.pecas.map(p=>`<tr>
+    <td>${p.codigo}</td><td>${p.desc}</td><td>${p.marca}</td><td>${p.qtd}</td><td>${fmtMoney(p.valorUnit)}</td><td>${fmtMoney(p.valorUnit*p.qtd)}</td>
+    <td><span style="cursor:pointer;color:var(--text-mute);" onclick="removeItem('${o.id}','pecas','${p.id}')">${ICONS.trash}</span></td>
+  </tr>`).join('');
+  return `
+  <div class="panel-title" style="margin-bottom:10px;">Serviços</div>
+  <table><thead><tr><th>Descrição</th><th>Mecânico</th><th>Tempo (h)</th><th>Valor</th><th></th></tr></thead><tbody>${servRows||'<tr><td colspan="5" style="color:var(--text-mute);">Nenhum serviço lançado.</td></tr>'}</tbody></table>
+  <button class="btn btn-sm btn-ghost" style="margin-top:10px;" onclick="openAddServico('${o.id}')">${ICONS.plus} Adicionar serviço</button>
+
+  <div class="panel-title" style="margin:22px 0 10px;">Peças</div>
+  <table><thead><tr><th>Código</th><th>Descrição</th><th>Marca</th><th>Qtde</th><th>Valor unit.</th><th>Total</th><th></th></tr></thead><tbody>${pecaRows||'<tr><td colspan="6" style="color:var(--text-mute);">Nenhuma peça lançada.</td></tr>'}</tbody></table>
+  <button class="btn btn-sm btn-ghost" style="margin-top:10px;" onclick="openAddPeca('${o.id}')">${ICONS.plus} Adicionar peça</button>
+  `;
+}
+
+function openAddServico(osId){
+  openModal(`
+    <h3>Adicionar serviço</h3>
+    <div class="field" style="margin-bottom:10px;"><label>Descrição</label><input id="m_desc"></div>
+    <div class="field" style="margin-bottom:10px;"><label>Mecânico</label><input id="m_mec"></div>
+    <div class="field" style="margin-bottom:10px;"><label>Tempo (h)</label><input id="m_horas" type="number" step="0.1"></div>
+    <div class="field"><label>Valor (R$)</label><input id="m_valor" type="number" step="0.01"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="addServico('${osId}')">Adicionar</button></div>
+  `);
+}
+function addServico(osId){
+  const o = findOS(osId);
+  o.servicos.push({id:uid('sv'), desc:document.getElementById('m_desc').value, mecanico:document.getElementById('m_mec').value, horas:Number(document.getElementById('m_horas').value)||0, valor:Number(document.getElementById('m_valor').value)||0});
+  saveDB(); closeModal(); Router.go('os-detail',{id:osId, tab:'servicos'}); toast('Serviço adicionado.');
+}
+function openAddPeca(osId){
+  openModal(`
+    <h3>Adicionar peça</h3>
+    <div class="field" style="margin-bottom:10px;"><label>Código</label><input id="m_codigo"></div>
+    <div class="field" style="margin-bottom:10px;"><label>Descrição</label><input id="m_pdesc"></div>
+    <div class="field" style="margin-bottom:10px;"><label>Marca</label><input id="m_marca"></div>
+    <div class="field" style="margin-bottom:10px;"><label>Quantidade</label><input id="m_qtd" type="number" value="1"></div>
+    <div class="field"><label>Valor unitário (R$)</label><input id="m_vunit" type="number" step="0.01"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancelar</button><button class="btn btn-primary" onclick="addPeca('${osId}')">Adicionar</button></div>
+  `);
+}
+function addPeca(osId){
+  const o = findOS(osId);
+  o.pecas.push({id:uid('pc'), codigo:document.getElementById('m_codigo').value, desc:document.getElementById('m_pdesc').value, marca:document.getElementById('m_marca').value, qtd:Number(document.getElementById('m_qtd').value)||1, valorUnit:Number(document.getElementById('m_vunit').value)||0});
+  saveDB(); closeModal(); Router.go('os-detail',{id:osId, tab:'servicos'}); toast('Peça adicionada.');
+}
+function removeItem(osId, kind, itemId){
+  const o = findOS(osId);
+  o[kind] = o[kind].filter(x=>x.id!==itemId);
+  saveDB(); Router.go('os-detail',{id:osId, tab:'servicos'});
+}
+
+function renderOSChecklist(o){
+  function groupHtml(cat){
+    const def = CHECKLIST_DEF[cat];
+    return def.grupos.map(g=>{
+      const items = o.checklist[cat].filter(i=>i.grupo===g.grupo);
+      const itemsHtml = items.map(it=>`
+        <div class="check-item">
+          <div class="check-item-name">${it.nome}</div>
+          <div class="check-states">
+            ${['ok','atencao','critico','na'].map(s=>{
+              const label = {ok:'OK',atencao:'!',critico:'✕',na:'N/A'}[s];
+              const on = it.estado===s ? 'on':'';
+              return `<button class="state-btn ${on}" data-s="${s}" title="${s}" onclick="setChecklistState('${o.id}','${cat}','${it.id}','${s}')">${label}</button>`;
+            }).join('')}
+          </div>
+        </div>`).join('');
+      return `<div class="checklist-group"><div class="checklist-group-title">${g.grupo}</div>${itemsHtml}</div>`;
+    }).join('');
+  }
+  const allItems = [...o.checklist.eletrica, ...o.checklist.mecanica];
+  const criticos = allItems.filter(i=>i.estado==='critico').length;
+  const atencao = allItems.filter(i=>i.estado==='atencao').length;
+  const banner = criticos>0
+    ? `<div class="banner banner-critical">${ICONS.alert} <div><b>${criticos} item(ns) crítico(s)</b> identificados no checklist. Recomenda-se gerar orçamento urgente para o cliente.</div></div>`
+    : (atencao>0 ? `<div class="banner" style="background:rgba(245,179,0,.1);border:1px solid rgba(245,179,0,.3);color:#ffe4a3;">${ICONS.alert} <div><b>${atencao} item(ns) em atenção.</b> Vale monitorar ou orçar preventivamente.</div></div>` : '');
+
+  return `
+  ${banner}
+  <div class="form-tabs" style="border:none; margin-bottom:10px;">
+    <div class="form-tab active" onclick="Router.go('os-detail',{id:'${o.id}',tab:'checklist',sub:'eletrica'})">${ICONS.bolt} Elétrica</div>
+    <div class="form-tab" onclick="Router.go('os-detail',{id:'${o.id}',tab:'checklist',sub:'mecanica'})">${ICONS.wrench} Mecânica</div>
+  </div>
+  <div style="max-height:520px; overflow-y:auto; padding-right:6px;">
+    ${(Router.params.sub==='mecanica') ? groupHtml('mecanica') : groupHtml('eletrica')}
+  </div>
+  `;
+}
+function setChecklistState(osId, cat, itemId, state){
+  const o = findOS(osId);
+  const item = o.checklist[cat].find(i=>i.id===itemId);
+  item.estado = item.estado===state ? null : state;
+  item.data = new Date().toISOString();
+  item.tecnico = 'Carlos Silva';
+  saveDB();
+  Router.go('os-detail',{id:osId, tab:'checklist', sub:Router.params.sub||'eletrica'});
+}
+
+function renderOSDiagnostico(o){
+  return `
+  <div class="field" style="margin-bottom:14px;"><label>Problema relatado / diagnóstico</label><textarea id="diag_text" rows="6">${o.diagnostico||''}</textarea></div>
+  <button class="btn btn-primary btn-sm" onclick="saveDiagnostico('${o.id}')">Salvar diagnóstico</button>
+  <div class="section-h">Sugestão da IA</div>
+  <div class="item-line"><div class="pill-icon">${ICONS.robot}</div><div>Possíveis causas identificadas com base no checklist e no diagnóstico: motor de partida, bateria, alternador, relé de partida, chicote elétrico, fusíveis.</div></div>
+  `;
+}
+function saveDiagnostico(osId){
+  const o = findOS(osId);
+  o.diagnostico = document.getElementById('diag_text').value;
+  saveDB(); toast('Diagnóstico atualizado.');
+}
+
+function renderOSHistorico(o){
+  return o.timeline.map(t=>`<div class="timeline-item"><span class="t-time">${t.t}</span><span class="timeline-dot" style="background:var(--${t.cor})"></span><span>${t.label} <span style="color:var(--text-mute)">— ${t.por}</span></span></div>`).join('');
+}
+
+function updateOSStatus(osId, status){
+  const o = findOS(osId);
+  o.status = status;
+  o.timeline.push({t:new Date().toLocaleString('pt-BR'), label:'Status alterado para: '+status, por:'Carlos Silva', cor:'blue'});
+  saveDB(); toast('Status atualizado para "'+status+'".');
+  Router.go('os-detail',{id:osId});
+}
+function approveOS(osId){
+  const o = findOS(osId);
+  o.aprovacao='aprovado';
+  o.timeline.push({t:new Date().toLocaleString('pt-BR'), label:'Orçamento aprovado pelo cliente', por:'Cliente', cor:'green'});
+  saveDB(); toast('Aprovação registrada.'); Router.go('os-detail',{id:osId});
+}
+function finalizeOS(osId){
+  const o = findOS(osId);
+  o.status='Finalizado';
+  o.timeline.push({t:new Date().toLocaleString('pt-BR'), label:'OS finalizada', por:'Carlos Silva', cor:'green'});
+  saveDB(); toast('OS #'+o.numero+' finalizada!'); Router.go('os-detail',{id:osId});
+}
+
+/* ============ AGENDA / BOXES ============ */
+function renderAgenda(){
+  const boxes = [
+    {nome:'Elevador 1', icon:'wrench', color:'blue'},
+    {nome:'Elevador 2', icon:'wrench', color:'blue'},
+    {nome:'Box Elétrica', icon:'bolt', color:'orange'},
+    {nome:'Box Motor', icon:'cog', color:'purple'},
+    {nome:'Box Freios', icon:'wrench', color:'red'},
+  ];
+  const activeOS = DB.os.filter(o=>o.status!=='Finalizado');
+  const boxCards = boxes.map((b,i)=>{
+    const os = activeOS[i];
+    const v = os ? findVehicle(os.veiculoId) : null;
+    const colorMap = {blue:'var(--blue)',orange:'var(--orange)',purple:'var(--purple)',red:'var(--red)'};
+    return `<div class="box-card">
+      <div class="box-name" style="color:${colorMap[b.color]}">${ICONS[b.icon]} ${b.nome}</div>
+      ${os ? `<div class="box-os">OS #${os.numero} — ${v?v.marca+' '+v.modelo:''}</div>${statusTag(os.status)}` : `<span class="tag tag-gray">Disponível</span>`}
+    </div>`;
+  }).join('');
+
+  const rows = DB.os.filter(o=>o.status!=='Finalizado').map(o=>{
+    const v = findVehicle(o.veiculoId);
+    return `<div class="list-row"><div><div class="l-main">${o.boxElevador||'—'}</div><div class="l-sub">OS #${o.numero} · ${v?v.marca+' '+v.modelo:''}</div></div>${statusTag(o.status)}</div>`;
+  }).join('');
+
+  return `
+  <div class="page-title">Agenda / Boxes</div>
+  <div class="page-sub">Ocupação dos boxes e elevadores da oficina</div>
+  <div class="box-grid" style="margin-bottom:20px;">${boxCards}</div>
+  <div class="panel"><div class="panel-title" style="margin-bottom:10px;">Ocupação atual</div>${rows || '<div class="empty-state">Nenhuma OS em andamento.</div>'}</div>
+  `;
+}
+
+/* ============ ESTOQUE ============ */
+function renderEstoqueList(){
+  const rows = DB.stock.map(s=>{
+    const low = s.qtd < s.minimo;
+    return `<tr class="clickable" onclick="Router.go('estoque-form',{id:'${s.id}'})">
+      <td>${s.codigo}</td><td>${s.desc}</td><td>${s.categoria}</td><td>${s.marca}</td>
+      <td>${s.qtd}</td><td>${s.minimo}</td><td>${fmtMoney(s.precoVenda)}</td>
+      <td>${low? '<span class="tag tag-red">Baixo</span>' : '<span class="tag tag-green">OK</span>'}</td>
+    </tr>`;
+  }).join('');
+  return `
+  <div class="os-head">
+    <div><div class="page-title">Estoque</div><div class="page-sub">Peças e insumos da oficina</div></div>
+    <button class="btn btn-primary" onclick="Router.go('estoque-form')">${ICONS.plus} Nova peça</button>
+  </div>
+  <div class="panel">
+    <table><thead><tr><th>Código</th><th>Descrição</th><th>Categoria</th><th>Marca</th><th>Qtde</th><th>Mínimo</th><th>Preço venda</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+  </div>`;
+}
+function renderEstoqueForm(id){
+  const editing = !!id;
+  const s = editing ? DB.stock.find(x=>x.id===id) : {codigo:'',desc:'',categoria:'',marca:'',qtd:0,minimo:1,precoCusto:0,precoVenda:0};
+  return `
+  <div class="os-head">
+    <div><div class="page-title">${editing?'Editar Peça':'Nova Peça'}</div></div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-ghost" onclick="Router.go('estoque-list')">← Voltar</button>
+      <button class="btn btn-primary" onclick="saveEstoque('${editing?id:''}')">Salvar</button>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="form-grid">
+      <div class="field"><label>Código</label><input id="e_codigo" value="${s.codigo}"></div>
+      <div class="field field-full"><label>Descrição</label><input id="e_desc" value="${s.desc}"></div>
+      <div class="field"><label>Categoria</label><input id="e_categoria" value="${s.categoria}"></div>
+      <div class="field"><label>Marca</label><input id="e_marca" value="${s.marca}"></div>
+      <div class="field"><label>Quantidade</label><input id="e_qtd" type="number" value="${s.qtd}"></div>
+      <div class="field"><label>Estoque mínimo</label><input id="e_minimo" type="number" value="${s.minimo}"></div>
+      <div class="field"><label>Preço de custo</label><input id="e_custo" type="number" step="0.01" value="${s.precoCusto}"></div>
+      <div class="field"><label>Preço de venda</label><input id="e_venda" type="number" step="0.01" value="${s.precoVenda}"></div>
+    </div>
+  </div>`;
+}
+function saveEstoque(id){
+  const get=k=>document.getElementById(k).value;
+  const data = {codigo:get('e_codigo'),desc:get('e_desc'),categoria:get('e_categoria'),marca:get('e_marca'),qtd:Number(get('e_qtd')),minimo:Number(get('e_minimo')),precoCusto:Number(get('e_custo')),precoVenda:Number(get('e_venda'))};
+  if(id){ Object.assign(DB.stock.find(x=>x.id===id), data); } else { data.id=uid('st'); DB.stock.push(data); }
+  saveDB(); toast('Peça salva.'); Router.go('estoque-list');
+}
+
+/* ============ FINANCEIRO ============ */
+function renderFinanceiro(){
+  const totalFat = DB.os.reduce((s,o)=>s+osTotalGeral(o),0);
+  const totalCusto = DB.stock.reduce((s,x)=>s+x.precoCusto*x.qtd,0);
+  const rows = DB.os.filter(o=>o.status==='Finalizado').map(o=>{
+    const v = findVehicle(o.veiculoId);
+    return `<tr><td>OS #${o.numero}</td><td>${v?v.marca+' '+v.modelo:''}</td><td>${fmtDateOnly(o.abertura)}</td><td style="color:var(--green); font-weight:700;">+${fmtMoney(osTotalGeral(o))}</td></tr>`;
+  }).join('');
+  return `
+  <div class="page-title">Financeiro</div>
+  <div class="page-sub">Fluxo de caixa e indicadores financeiros da oficina</div>
+  <div class="grid" style="grid-template-columns:repeat(3,1fr); margin-bottom:18px;">
+    <div class="panel"><div class="stat-label">Faturamento total</div><div class="stat-value" style="color:var(--green)">${fmtMoney(totalFat)}</div></div>
+    <div class="panel"><div class="stat-label">Valor em estoque (custo)</div><div class="stat-value">${fmtMoney(totalCusto)}</div></div>
+    <div class="panel"><div class="stat-label">OS em aberto</div><div class="stat-value">${DB.os.filter(o=>o.status!=='Finalizado').length}</div></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title" style="margin-bottom:10px;">Lançamentos (OS finalizadas)</div>
+    <table><thead><tr><th>OS</th><th>Veículo</th><th>Data</th><th>Valor</th></tr></thead><tbody>${rows || '<tr><td colspan="4" style="color:var(--text-mute);">Nenhuma OS finalizada ainda.</td></tr>'}</tbody></table>
+  </div>`;
+}
+
+/* ============ GARANTIAS / RELATÓRIOS / CONFIG (stubs) ============ */
+function renderGarantias(){
+  return `<div class="page-title">Garantias</div><div class="page-sub">Controle de garantias de peças e serviços</div>
+  <div class="panel"><div class="empty-state">${ICONS.shield}<div>Nenhuma garantia cadastrada ainda. Vincule garantias diretamente pela Ordem de Serviço.</div></div></div>`;
+}
+function renderRelatorios(){
+  const porSecao = {};
+  DB.os.forEach(o=>{ o.servicos.forEach(s=>{ /* placeholder aggregation */ }); });
+  return `<div class="page-title">Relatórios</div><div class="page-sub">Indicadores de desempenho da oficina</div>
+  <div class="grid" style="grid-template-columns:repeat(2,1fr);">
+    <div class="panel"><div class="panel-title" style="margin-bottom:10px;">Faturamento por status de OS</div>
+      ${['Aberta','Em manutenção','Aguardando peça','Em execução','Finalizado'].map(st=>{
+        const total = DB.os.filter(o=>o.status===st).reduce((s,o)=>s+osTotalGeral(o),0);
+        return `<div class="list-row"><span class="l-sub">${st}</span><b>${fmtMoney(total)}</b></div>`;
+      }).join('')}
+    </div>
+    <div class="panel"><div class="panel-title" style="margin-bottom:10px;">Veículos com mais OS</div>
+      ${DB.vehicles.map(v=>({v, n:DB.os.filter(o=>o.veiculoId===v.id).length})).sort((a,b)=>b.n-a.n).slice(0,5).map(x=>`<div class="list-row"><span class="l-sub">${x.v.marca} ${x.v.modelo} (${x.v.placa})</span><b>${x.n} OS</b></div>`).join('')}
+    </div>
+  </div>`;
+}
+function renderConfig(){
+  return `<div class="page-title">Configurações</div><div class="page-sub">Preferências do sistema</div>
+  <div class="panel">
+    <div class="list-row"><span class="l-main">Nome da oficina</span><span class="l-sub">GL Electromechanic</span></div>
+    <div class="list-row"><span class="l-main">Usuário</span><span class="l-sub">Carlos Silva — Administrador</span></div>
+    <div class="list-row"><span class="l-main">Versão</span><span class="l-sub">1.0.0</span></div>
+  </div>
+  <div class="panel" style="margin-top:16px;">
+    <div class="panel-title" style="margin-bottom:10px; color:var(--red);">Zona de risco</div>
+    <button class="btn btn-danger" onclick="resetAllData()">${ICONS.trash} Restaurar dados de exemplo</button>
+  </div>`;
+}
+function resetAllData(){
+  if(confirm('Isso vai apagar todos os dados atuais e restaurar os dados de exemplo. Continuar?')){
+    localStorage.removeItem(DB_KEY);
+    DB = loadDB();
+    toast('Dados restaurados.');
+    Router.go('dashboard');
+  }
+}
+
+/* ---------------- GLOBAL SEARCH ---------------- */
+document.getElementById('globalSearch').addEventListener('keydown', e=>{
+  if(e.key==='Enter'){
+    const q = e.target.value.trim().toLowerCase();
+    if(!q) return;
+    const v = DB.vehicles.find(v=>v.placa.toLowerCase().includes(q) || v.chassi.toLowerCase().includes(q));
+    if(v){ Router.go('veiculo-form',{id:v.id}); return; }
+    const o = DB.os.find(o=>String(o.numero).includes(q));
+    if(o){ Router.go('os-detail',{id:o.id}); return; }
+    const c = DB.clients.find(c=>c.nome.toLowerCase().includes(q));
+    if(c){ Router.go('cliente-form',{id:c.id}); return; }
+    toast('Nenhum resultado encontrado para "'+e.target.value+'".');
+  }
+});
+
+/* ---------------- INIT ---------------- */
+render();
+</script>
+</body>
+</html>
